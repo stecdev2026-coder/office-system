@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, MessageCircle, MapPinHouse, Eye, EyeOff } from 'lucide-react';
+import Image from 'next/image';
+import { Loader2, MessageCircle, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/utils/supabase/client';
 import { deviceTokenFor, saveLogin } from '@/lib/auth/client';
@@ -74,7 +75,7 @@ export default function LoginPage() {
       <div className="absolute inset-0 rounded-b-[50%] bg-white/30" />
     </div>
     <div className="relative z-10 flex flex-1 flex-col items-center px-6 pt-10 pb-6">
-      <div className="mb-5 flex h-20 w-20 shrink-0 items-center justify-center rounded-3xl bg-white text-blue-600 shadow"><MapPinHouse size={44} /></div>
+      <Image src="/brand/logo-app-stec.png" alt="STEC" width={96} height={96} priority className="mb-5 h-24 w-24 shrink-0 rounded-3xl object-cover shadow-lg" />
       <h1 className="text-2xl font-bold text-gray-900">OFFICE SYSTEM</h1><p className="mt-2 text-center text-sm text-gray-500">ลงชื่อเข้าใช้เพื่อเริ่มงานของคุณ</p>
     </div>
     </div>
