@@ -18,7 +18,7 @@ export default function PendingPage() {
   return (
     // 🌟 1. ถอดกรอบสีเทาออก ใช้ fixed inset-0 ยืดเต็มจอบนล่าง 
     // และใช้ md:max-w-3xl lg:max-w-4xl เพื่อรักษาความกว้างตรงกลางให้เป็นมาตรฐานเดียวกับหน้าอื่นๆ
-    <div className="fixed inset-0 w-full max-w-md md:max-w-3xl lg:max-w-4xl mx-auto h-full bg-[#FAFAFA] flex flex-col overflow-hidden md:border-x md:border-gray-200 md:shadow-2xl">
+    <div className="app-page">
       <div className="flex flex-col items-center justify-center flex-1 px-8 md:px-16 text-center">
         
         {/* 🌟 2. ขยายขนาดไอคอนและวงกลมพื้นหลังเมื่ออยู่บนหน้าจอ iPad */}

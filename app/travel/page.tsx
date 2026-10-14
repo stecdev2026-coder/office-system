@@ -1,4 +1,5 @@
 "use client";
+import BackButton from "@/components/BackButton";
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -269,7 +270,7 @@ export default function TravelPage() {
 
   return (
     // 🌟 ขยายขนาดความกว้างสำหรับ iPad (md:max-w-3xl) และเพิ่มเงา
-    <div className="fixed inset-x-0 top-0 bottom-0 w-full max-w-md md:max-w-3xl lg:max-w-4xl mx-auto bg-[#FAFAFA] pb-24 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none'] md:border-x md:border-gray-200 md:shadow-2xl">
+    <div className="app-page app-page-scroll">
       
       {/* 🌟 Popup Modal: เริ่มเดินทาง */}
       {showStartModal && (
@@ -362,12 +363,7 @@ export default function TravelPage() {
       >
         <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px]"></div>
         <div className="px-6 md:px-10 flex items-center justify-between relative z-10">
-          <button
-            onClick={() => router.push("/")}
-            className="cursor-pointer w-10 h-10 md:w-12 md:h-12 bg-white/90 backdrop-blur-md border border-white/50 rounded-full flex items-center justify-center text-gray-700 active:scale-95 transition-all shadow-sm"
-          >
-            <ChevronLeft size={24} className="md:w-7 md:h-7" />
-          </button>
+          <BackButton fallback="/" className="cursor-pointer w-10 h-10 md:w-12 md:h-12 bg-white/90 backdrop-blur-md border border-white/50 rounded-full flex items-center justify-center text-gray-700 active:scale-95 transition-all shadow-sm" />
           <h1 className="text-base md:text-lg font-bold text-gray-900 absolute left-1/2 -translate-x-1/2 drop-shadow-md">
             บันทึกการเดินทาง
           </h1>

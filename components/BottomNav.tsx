@@ -19,7 +19,7 @@ export default function BottomNav() {
     }
   }, [pathname]);
 
-  if (pathname === "/login" || pathname === "/register" || !isLoggedIn) {
+  if (pathname === "/login" || pathname === "/admin-login" || pathname === "/register" || pathname === "/pending" || pathname.startsWith("/admin") || !isLoggedIn) {
     return null;
   }
 
@@ -45,7 +45,7 @@ export default function BottomNav() {
   };
 
   return (
-    <div className="absolute bottom-0 left-0 w-full z-50">
+    <nav aria-label="เมนูหลัก" className="bottom-nav">
       <div className="bg-white rounded-t-[30px] border-t border-gray-100 px-6 pt-2 pb-4 flex justify-between items-end relative">
         {navItems.map((item) => {
           
@@ -62,8 +62,8 @@ export default function BottomNav() {
             return (
               <div key={item.id} className="relative -top-1 flex flex-col items-center justify-center">
                 <button 
-                  onClick={() => handleNavigation(item.id, item.route)}
-                  className="cursor-pointer w-12 h-12 bg-[#2563eb] rounded-full flex items-center justify-center text-white shadow-lg shadow-blue-500/40 transform transition-transform active:scale-95 mb-1"
+                  aria-label={item.label} aria-current={isActive ? "page" : undefined} onClick={() => handleNavigation(item.id, item.route)}
+                  className="cursor-pointer w-12 h-12 bg-[#2563eb] rounded-full flex items-center justify-center text-white shadow-lg shadow-teal-900/10 transform transition-transform active:scale-95 mb-1"
                 >
                   <Icon size={26} strokeWidth={2.5} />
                 </button>
@@ -77,7 +77,7 @@ export default function BottomNav() {
           return (
             <button 
               key={item.id}
-              onClick={() => handleNavigation(item.id, item.route)}
+              aria-label={item.label} aria-current={isActive ? "page" : undefined} onClick={() => handleNavigation(item.id, item.route)}
               className="cursor-pointer flex flex-col items-center justify-center gap-1 min-w-[50px] pb-1"
             >
               <Icon 
@@ -92,6 +92,6 @@ export default function BottomNav() {
           );
         })}
       </div>
-    </div>
+    </nav>
   );
 }

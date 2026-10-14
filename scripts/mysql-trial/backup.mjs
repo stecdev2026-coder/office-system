@@ -1,0 +1,10 @@
+import { spawn } from 'node:child_process';
+import { mkdir } from 'node:fs/promises';
+import { createWriteStream } from 'node:fs';
+import { pipeline } from 'node:stream/promises';
+await mkdir('backups/mysql-trial',{recursive:true});
+const target=`backups/mysql-trial/${new Date().toISOString().replace(/[:.]/g,'-')}.sql`;
+const proc=spawn('docker',['compose','--env-file','.env.mysql.local','-f','compose.mysql.yml','exec','-T','mysql','sh','-c','MYSQL_PWD="$MYSQL_PASSWORD" exec mysqldump -u office_app --single-transaction --no-tablespaces --set-gtid-purged=OFF office_trial'],{stdio:['ignore','pipe','pipe']});
+let errors='';proc.stderr.on('data',chunk=>errors+=chunk);
+const completed=new Promise((resolve,reject)=>{proc.on('error',reject);proc.on('close',code=>code===0?resolve():reject(Error('Trial backup failed: '+errors)));});
+await Promise.all([pipeline(proc.stdout,createWriteStream(target,{flags:'wx'})),completed]);console.log('Trial backup saved: '+target);

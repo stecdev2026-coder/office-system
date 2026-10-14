@@ -39,3 +39,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local database snapshots
+/backups/
+/.admin-bootstrap.local.json
+/.super-admin-bootstrap.local.json
+/.artifacts/
+/.next-dev/
+/ngrok.exe

@@ -1,0 +1,6 @@
+import {NextResponse} from 'next/server';
+import {failure,publicEmployee} from '@/lib/auth/server';
+import {permissionSession,protectedEmployeeIds} from '@/lib/permissions/server';
+import {hasPermission} from '@/lib/permissions/catalog';
+import {allRows} from '@/lib/groups/database';
+export async function GET(){try{const auth=await permissionSession();if(!['users.view','users.import','groups.view','groups.edit','locations.view','permissions.view'].some(k=>hasPermission(auth.permissions,k)))return NextResponse.json({error:'ไม่มีสิทธิ์อ่านตัวเลือก'}, {status:403});const [groups,employees,roles,superIds]=await Promise.all([allRows('work_groups'),allRows('employees'),allRows('permission_roles'),protectedEmployeeIds()]);const unique=(key:string)=>[...new Set(employees.map(e=>e[key]).filter(Boolean))].sort();return NextResponse.json({groups:groups.filter(g=>g.active),departments:unique('department'),divisions:unique('division'),branches:unique('branch'),positions:unique('position'),roles:roles.filter(r=>hasPermission(auth.permissions,'permissions.manage')||r.name==='พนักงาน'),employees:hasPermission(auth.permissions,'users.view')||hasPermission(auth.permissions,'groups.view')?employees.map(e=>({...publicEmployee(e),is_super_admin:superIds.includes(e.id)})):[]},{headers:{'Cache-Control':'no-store'}});}catch(e){return failure(e);}}

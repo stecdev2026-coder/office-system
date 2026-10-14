@@ -1,5 +1,6 @@
 "use client";
 
+import {usePermissions} from '@/components/Permissions';
 import React, { useState, useEffect } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
@@ -18,6 +19,7 @@ import {
 
 export default function LeaveRequestsPage() {
   const supabase = createClient();
+  const {can}=usePermissions();
   const [leaves, setLeaves] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("all");
@@ -241,13 +243,13 @@ export default function LeaveRequestsPage() {
                         {leave.status === "pending" && (
                           <>
                             <button 
-                              onClick={() => updateLeaveStatus(leave.id, "approved")}
+                              hidden={!can('requests.approve')} onClick={() => updateLeaveStatus(leave.id, "approved")}
                               className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="อนุมัติ"
                             >
                               <Check size={18} />
                             </button>
                             <button 
-                              onClick={() => updateLeaveStatus(leave.id, "rejected")}
+                              hidden={!can('requests.approve')} onClick={() => updateLeaveStatus(leave.id, "rejected")}
                               className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="ปฏิเสธ"
                             >
                               <XIcon size={18} />

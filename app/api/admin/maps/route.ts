@@ -1,0 +1,6 @@
+import {NextRequest,NextResponse} from 'next/server';
+import {AuthError,checkOrigin,failure} from '@/lib/auth/server';
+import {requirePermission} from '@/lib/permissions/server';
+import {validMapUrl,parseMapUrl} from '@/lib/groups/google-map';
+function validated(value:string){try{return validMapUrl(value);}catch{throw new AuthError('ใช้ลิงก์ HTTPS จาก Google Maps เท่านั้น');}}
+export async function POST(request:NextRequest){try{checkOrigin(request);await requirePermission('locations.edit');const b=await request.json();if(typeof b.url!=='string'||b.url.length>4000)throw new AuthError('ลิงก์ไม่ถูกต้อง');let url=validated(b.url.trim());let parsed=parseMapUrl(url);for(let i=0;!parsed&&i<5;i++){const r=await fetch(url,{redirect:'manual',cache:'no-store',signal:AbortSignal.timeout(8000),headers:{'User-Agent':'Mozilla/5.0'}});const location=r.headers.get('location');await r.body?.cancel();if(!location)break;url=validated(new URL(location,url).href);parsed=parseMapUrl(url);}if(!parsed)throw new AuthError('ลิงก์ไม่มีพิกัด กรุณาใช้ลิงก์แชร์ที่มีพิกัดหรือกรอกเอง');return NextResponse.json({...parsed,resolvedUrl:url.href,message:parsed.source==='map-center'?'ลิงก์นี้ใช้จุดกึ่งกลางแผนที่ กรุณาตรวจพิกัดอีกครั้ง':!parsed.name?'พบพิกัดแล้ว กรุณาระบุชื่อสถานที่':undefined});}catch(e){return failure(e);}}

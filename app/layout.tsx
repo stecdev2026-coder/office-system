@@ -1,6 +1,10 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Noto_Sans_Thai } from "next/font/google";
 import "./globals.css";
+import { AppHistory } from "@/components/BackButton";
+import SessionGate from "@/components/SessionGate";
+import PwaControls from "@/components/PwaControls";
+import AppContainer from "@/components/AppContainer";
 import BottomNav from "@/components/BottomNav";
 import { Toaster } from "sonner";
 
@@ -14,28 +18,33 @@ export const metadata: Metadata = {
   title: "Office System",
   description: "ระบบลงเวลาและจัดการวันลาสำหรับพนักงาน",
   manifest: "/manifest.json",
+  applicationName: "Office System",
+  appleWebApp: { capable: true, title: "Office System", statusBarStyle: "default" },
+  icons: { apple: "/icons/apple-touch-icon.png", icon: "/icons/icon-192x192.png" },
 };
+export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#f4f6f9" };
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="th" suppressHydrationWarning>
       <body className={notoSansThai.className}>
-        <div className="flex min-h-dvh items-center justify-center bg-gray-200 sm:p-4">
+        <AppHistory><div className="app-viewport">
           
           {/* 🌟 เรียกใช้ตัวแปรตรงนี้ โค้ดจะดูคลีนมาก */}
-          <div className="mobile-app-container">
+          <AppContainer>
             
-            <main className="min-h-0 flex-1 overflow-y-auto pb-12">
-              {children}
+            <main className="app-main">
+              <SessionGate>{children}</SessionGate>
               <Toaster position="top-center" richColors closeButton />
             </main>
 
-            <div className="absolute inset-x-0 bottom-0 z-50">
+            <PwaControls />
+            <div className="app-navigation">
               <BottomNav />
             </div>
             
-          </div>
+          </AppContainer>
 
-        </div>
+        </div></AppHistory>
       </body>
     </html>
   );

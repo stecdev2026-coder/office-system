@@ -1,24 +1,36 @@
 {
   "name": "OFFICE SYSTEM",
-  "short_name": "OFFICE SYSTEM",
+  "short_name": "Office",
   "description": "ระบบลงเวลาและจัดการวันลาสำหรับพนักงาน",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#FAFAFA",
-  "theme_color": "#000000",
-  "orientation": "portrait",
+  "background_color": "#f4f6f9",
+  "theme_color": "#f4f6f9",
+  "orientation": "any",
   "icons": [
     {
       "src": "/icons/icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "maskable any"
+      "purpose": "any"
     },
     {
       "src": "/icons/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "maskable any"
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
+  ],
+  "id": "/",
+  "scope": "/",
+  "lang": "th",
+  "display_override": [
+    "standalone"
   ]
 }

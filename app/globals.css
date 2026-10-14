@@ -10,6 +10,29 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  /* Shared blue palette matching the original HR service page. */
+  --color-blue-50: #eff6ff;
+  --color-blue-100: #dbeafe;
+  --color-blue-200: #bfdbfe;
+  --color-blue-300: #93c5fd;
+  --color-blue-400: #60a5fa;
+  --color-blue-500: #3b82f6;
+  --color-blue-600: #2563eb;
+  --color-blue-700: #1d4ed8;
+  --color-blue-800: #1e40af;
+  --color-blue-900: #1e3a8a;
+  --color-blue-950: #172554;
+  --color-teal-50: #eff6ff;
+  --color-teal-100: #dbeafe;
+  --color-teal-200: #bfdbfe;
+  --color-teal-300: #93c5fd;
+  --color-teal-400: #60a5fa;
+  --color-teal-500: #3b82f6;
+  --color-teal-600: #2563eb;
+  --color-teal-700: #2563eb;
+  --color-teal-800: #1d4ed8;
+  --color-teal-900: #1e3a8a;
+  --color-teal-950: #172554;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -73,4 +96,62 @@ body {
   }
 }
 
-/* End -- Custom  Styles -----------------------------------*/
+/* End -- Custom  Styles -----------------------------------*//* Shared mobile shell: the document never scrolls. */
+html, body { height: 100%; overflow: hidden; background: #f4f6f9; color: #171717; }
+.app-viewport { height: 100dvh; display: flex; justify-content: center; background: #e5e7eb; }
+.mobile-app-container { height: 100%; width: 100%; max-width: 48rem; border: 0; border-radius: 0; display: flex; flex-direction: column; overflow: hidden; padding-top: env(safe-area-inset-top, 0px); }
+.app-main { flex: 1; min-height: 0; position: relative; overflow: hidden; }
+.app-page { position: relative; width: 100%; height: 100%; min-height: 0; display: flex; flex-direction: column; overflow: hidden; background: #fafafa; }
+.app-page > .overflow-y-auto { min-height: 0; overscroll-behavior-y: contain; padding-bottom: 24px; }
+.app-page-scroll { display: block; overflow-y: auto; overscroll-behavior-y: contain; padding-bottom: 24px; }
+.app-page-scroll > div[style*="background-image"] { position: sticky; top: 0; z-index: 35; padding-top: 20px; padding-bottom: 40px; }
+.app-page > div[style*="background-image"] { flex-shrink: 0; padding-top: 20px; }
+.app-navigation { flex-shrink: 0; z-index: 50; background: white; }
+.bottom-nav { padding-bottom: env(safe-area-inset-bottom, 0px); background: white; }
+.bottom-nav button { min-height: 44px; }
+.mobile-app-container:has(.bottom-nav) .app-main { padding-bottom: 0; }
+.mobile-app-container:not(:has(.bottom-nav)) { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.app-main input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), .app-main select, .app-main textarea { font-size: 16px; min-height: 48px; border-radius: 12px; }
+.app-main input, .app-main select, .app-main textarea { scroll-margin-block: 90px; }
+button, a, summary { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+input[type="checkbox"],input[type="radio"] {accent-color:#2563eb;}
+button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, summary:focus-visible { outline: 3px solid #2563eb; outline-offset: 3px; }
+.pwa-controls { flex-shrink: 0; display: flex; gap: 12px; align-items: center; padding: 8px 16px; background: #eff6ff; color: #1d4ed8; font-size: 13px; z-index: 45; }
+.pwa-controls button, .pwa-controls summary { min-height: 44px; display: flex; align-items: center; font-weight: 700; cursor: pointer; }
+.pwa-controls details p { max-width: 32rem; padding-block: 8px; }
+@media (display-mode: standalone) { .app-viewport { background: #f4f6f9; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
+.app-page:has(input[type="email"]) > .flex-1 { min-height: 0; overflow-y: auto; }
+.mobile-app-container:has([data-admin-shell]) { max-width: none; }
+
+@media (min-width: 1024px) { .mobile-app-container:has([data-login-page]) { max-width: none; box-shadow: none; } }
+
+.mobile-app-container[data-admin-route="true"] {max-width:none;box-shadow:none;background:#f7f9fa;}
+[data-admin-loading] {position:fixed;inset:0;background:#f7f9fa;z-index:50;}
+[data-admin-route] [data-loading-screen] {background:#f7f9fa;padding:0;}
+[data-admin-route] [data-loading-panel] {max-width:none;height:100%;border-radius:0;box-shadow:none;background:#f7f9fa;}
+
+/* All existing and future buttons use a pointer, including button-like controls. */
+button, [role="button"], input[type="button"], input[type="submit"], input[type="reset"], summary {cursor:pointer!important;}
+
+/* Quiet, shared employee home and attendance UI. */
+.staff-header {flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:20px 24px;background:#fff;border-bottom:1px solid #edf1f2;z-index:20;}
+.staff-header-back {justify-content:flex-start;}
+.staff-content {flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:24px;background:#f4f6f9;}
+.staff-card {padding:24px;background:#fff;border:1px solid #e8eeed;border-radius:24px;box-shadow:0 4px 18px #1e3a8a04;}
+.staff-card.p-0 {padding:0;}
+.attendance-hero {background:linear-gradient(135deg,#fff,#eff6ff);}
+.staff-eyebrow {display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:#1e40af;}
+.staff-status {padding:5px 10px;border-radius:20px;background:#dbeafe;color:#1d4ed8;font-size:12px;white-space:nowrap;}
+.staff-primary,.staff-secondary {display:flex;align-items:center;justify-content:center;gap:10px;min-height:48px;padding:12px 18px;border-radius:14px;font-weight:600;transition:background .15s;}
+.staff-primary {background:#2563eb;color:white;}.staff-primary:hover {background:#1d4ed8;}
+.staff-secondary {border:1px solid #dbeafe;background:white;color:#1e40af;}.staff-secondary:hover{background:#eff6ff;}
+.staff-primary:disabled,.staff-secondary:disabled {opacity:.45;}
+.staff-avatar {width:46px;height:46px;border-radius:50%;background:#eff6ff;color:#2563eb;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:20px;font-weight:600;flex-shrink:0;}.staff-avatar img{width:100%;height:100%;object-fit:cover;}
+.staff-icon-button{display:flex;align-items:center;justify-content:center;width:42px;height:42px;border-radius:50%;background:#f1f5f9;color:#1e40af;}
+.staff-menu-row {display:flex;align-items:center;gap:14px;padding:20px;}.staff-menu-row:hover{background:#eff6ff;}.staff-menu-icon{display:flex;align-items:center;justify-content:center;width:44px;height:44px;flex-shrink:0;border-radius:14px;background:#eff6ff;color:#2563eb;}
+.camera-overlay{position:fixed;inset:0;z-index:1100;display:flex;align-items:center;justify-content:center;padding:20px;background:#172554b3;backdrop-filter:blur(4px);}.camera-panel{width:100%;max-width:560px;max-height:calc(100dvh - 40px);overflow-y:auto;background:white;border-radius:24px;padding:20px;}.camera-panel video{max-height:60dvh;object-fit:contain;}
+.office-select-wrapper .office-select__input-container input {min-height:0!important;border:0!important;box-shadow:none!important;padding:0!important;border-radius:0!important;}
+.pwa-controls{justify-content:center;text-align:center;flex-wrap:wrap;background:#eff6ff;color:#2563eb;border-top:1px solid #dbeafe;gap:8px;}
+.pwa-controls details{width:100%;}.pwa-controls summary{justify-content:center;gap:10px;}.pwa-controls details p{margin-inline:auto;line-height:1.7;}.pwa-install-icon{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:11px;background:#dbeafe;}
+@media(max-width:420px){.staff-header{padding:16px 20px;}.staff-content{padding:20px;}.staff-card{padding:20px;}.staff-card.p-0{padding:0;}}

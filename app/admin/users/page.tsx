@@ -1,5 +1,9 @@
 "use client";
+import {usePermissions,Can} from '@/components/Permissions';
+import EmployeeImport from '@/components/EmployeeImport';
+import AdminSelect from "@/components/ui/AdminSelect";
 
+import EmployeeAccountForm from "@/components/EmployeeAccountForm";
 import React, { useState, useEffect } from "react";
 import { createClient } from "@/utils/supabase/client";
 import {
@@ -21,6 +25,9 @@ import { toast } from "sonner";
 
 export default function UsersManagementPage() {
   const supabase = createClient();
+  const {can}=usePermissions();
+  const [lookups,setLookups]=useState<any>({groups:[],departments:[],divisions:[],branches:[],positions:[]});
+  useEffect(()=>{fetch("/api/admin/lookups",{cache:"no-store"}).then(r=>r.json()).then(d=>setLookups(d)).catch(()=>{});},[]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,8 +75,15 @@ export default function UsersManagementPage() {
     setIsModalOpen(true);
   };
 
+  const syncIdentity = async (employeeId: unknown) => {
+    const response = await fetch('/api/admin/accounts', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ employeeId: String(employeeId) }) });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'บันทึกการผูกบัญชีไม่สำเร็จ');
+  };
+
   // 🌟 ฟังก์ชันอนุมัติพนักงานที่ล็อกอินผ่าน LINE เข้ามาใหม่
   const handleApprove = async (user: any) => {
+    if(!can("users.edit")||user.is_super_admin)return;
     setProcessingId(user.id || user.line_user_id);
     try {
       const pkColumn = user.id ? "id" : "line_user_id";
@@ -79,11 +93,12 @@ export default function UsersManagementPage() {
         .from("employees")
         .update({
           is_active: true,
-          role: "Staff",
+          ...(can("permissions.manage")?{role:"Staff"}:{}),
         })
         .eq(pkColumn, pkValue);
 
       if (error) throw error;
+      await syncIdentity(user.id);
       toast.success("อนุมัติพนักงานสำเร็จ!");
 
       // ให้เปิดฟอร์มแก้ไขต่อเลย เผื่อแอดมินอยากใส่รหัสพนักงาน หรือแผนก
@@ -105,7 +120,7 @@ export default function UsersManagementPage() {
     setIsSaving(true);
 
     const formData = new FormData(e.currentTarget);
-    const employeeData = {
+    const employeeData:Record<string,any> = {
       first_name: formData.get("first_name") || null,
       last_name: formData.get("last_name") || null,
       nickname: formData.get("nickname") || null,
@@ -113,10 +128,14 @@ export default function UsersManagementPage() {
       email: formData.get("email") || null,
       department: formData.get("department") || null,
       position: formData.get("position") || null,
+      division: formData.get("division") || null, branch: formData.get("branch") || null, work_group: formData.get("work_group") || null,
       role: formData.get("role") || "Staff",
       annual_leave_quota: Number(formData.get("annual_leave_quota")) || 0,
       is_active: formData.get("is_active") === "on",
     };
+    if(!can('permissions.manage'))delete employeeData.role;
+    if(!can('groups.members'))delete employeeData.work_group;
+    if(editingUser&&employeeData.role===editingUser.role)delete employeeData.role;
 
     try {
       if (editingUser) {
@@ -129,13 +148,15 @@ export default function UsersManagementPage() {
           .eq(pkColumn, pkValue);
 
         if (error) throw error;
+        await syncIdentity(editingUser.id);
         toast.success("แก้ไขข้อมูลพนักงานสำเร็จ!");
       } else {
-        const { error } = await supabase
+        const { data: savedEmployee, error } = await supabase
           .from("employees")
-          .insert([employeeData]);
+          .insert([employeeData]).select('id').single();
 
         if (error) throw error;
+        if(can('users.edit'))await syncIdentity(savedEmployee.id);
         toast.success("เพิ่มพนักงานใหม่สำเร็จ!");
       }
 
@@ -210,6 +231,7 @@ export default function UsersManagementPage() {
         </div>
         <button
           onClick={handleAddNew}
+          hidden={!can("users.create")}
           className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm shadow-blue-200 transition-all active:scale-95 flex items-center gap-2 w-fit"
         >
           <Plus size={18} />
@@ -264,7 +286,7 @@ export default function UsersManagementPage() {
             />
           </div>
           <div className="flex items-center gap-2 md:gap-3">
-            <select
+            <AdminSelect
               value={departmentFilter}
               onChange={(e) => setDepartmentFilter(e.target.value)}
               className="bg-gray-50 border border-gray-200 text-gray-700 text-xs md:text-sm rounded-xl px-3 py-2.5 outline-none focus:border-blue-500 font-medium cursor-pointer"
@@ -272,7 +294,7 @@ export default function UsersManagementPage() {
               <option value="">ทุกแผนก</option>
               <option value="IT Support">IT Support</option>
               <option value="HR">HR</option>
-            </select>
+            </AdminSelect>
           </div>
         </div>
 
@@ -324,17 +346,26 @@ export default function UsersManagementPage() {
                   </td>
                 </tr>
               ) : (
-                filteredUsers.map((user) => (
+                filteredUsers.map((user, rowIndex) => (
                   <tr
                     key={user.id || user.line_user_id}
-                    className="hover:bg-blue-50/40 transition-colors group"
+                    onClick={() => handleEdit(user)}
+                    tabIndex={0}
+                    aria-label={`ดูรายละเอียด ${user.first_name || user.display_name || 'พนักงาน'} ${user.last_name || ''}`}
+                    onKeyDown={event => {
+                      if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
+                        event.preventDefault();
+                        handleEdit(user);
+                      }
+                    }}
+                    className={`border-b border-slate-200 hover:bg-teal-100/70 focus-visible:bg-teal-100/70 focus-visible:outline-2 focus-visible:outline-[#2563eb] transition-colors group cursor-pointer ${rowIndex % 2 === 0 ? "bg-white" : "bg-slate-100/80"}`}
                   >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         {/* 🌟 แสดงรูปภาพจาก LINE ถ้ามี */}
-                        {user.picture_url ? (
+                        {(user.profile_photo_url || user.picture_url) ? (
                           <img
-                            src={user.picture_url}
+                            src={user.profile_photo_url || user.picture_url}
                             alt="profile"
                             className="w-10 h-10 rounded-full border border-gray-100 object-cover shrink-0"
                           />
@@ -397,15 +428,16 @@ export default function UsersManagementPage() {
                         <span
                           className={`text-sm font-medium ${user.role === "Admin" ? "text-indigo-600" : "text-gray-600"}`}
                         >
-                          {user.role || "Staff"}
+                          {user.is_super_admin?"Super Admin":user.role || "Staff"}
                         </span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div onClick={event => event.stopPropagation()} className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
                         {activeTab === "pending" ? (
                           <button
                             onClick={() => handleApprove(user)}
+                            hidden={!can('users.edit')||user.is_super_admin}
                             disabled={
                               processingId === (user.id || user.line_user_id)
                             }
@@ -421,6 +453,7 @@ export default function UsersManagementPage() {
                         ) : (
                           <button
                             onClick={() => handleEdit(user)}
+                            hidden={!can('users.edit')||user.is_super_admin}
                             className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
                           >
                             <Edit size={18} />
@@ -429,6 +462,8 @@ export default function UsersManagementPage() {
 
                         <button
                           onClick={() => handleDeleteClick(user)}
+                          hidden={!can("users.delete")||user.is_super_admin}
+                          disabled={!can("users.delete")||user.is_super_admin}
                           className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
                         >
                           <Trash2 size={18} />
@@ -450,6 +485,7 @@ export default function UsersManagementPage() {
         </div>
       </div>
 
+      <Can permission="users.import"><EmployeeImport onImported={fetchEmployees}/></Can>
       {/* 🌟 Slide-over Modal สำหรับฟอร์มพนักงาน */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[70] flex justify-end">
@@ -460,16 +496,16 @@ export default function UsersManagementPage() {
 
           <form
             onSubmit={handleSave}
-            className="relative w-full max-w-md bg-white h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300"
+            className="relative w-full md:w-[85vw] lg:w-[70vw] max-w-none bg-white h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300"
           >
             <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">
               <div>
                 <h2 className="text-lg font-bold text-gray-900">
-                  {editingUser ? "แก้ไขข้อมูลพนักงาน" : "เพิ่มพนักงานใหม่"}
+                  {editingUser ? (!can('users.edit')||editingUser.is_super_admin?'รายละเอียดพนักงาน':'แก้ไขข้อมูลพนักงาน') : "เพิ่มพนักงานใหม่"}
                 </h2>
                 <p className="text-xs text-gray-500 mt-0.5">
                   {editingUser
-                    ? `กำลังแก้ไขข้อมูลของ ${editingUser.first_name || editingUser.display_name}`
+                    ? `ข้อมูลของ ${editingUser.first_name || editingUser.display_name}`
                     : "ระบบจะรอให้พนักงานผูกบัญชี LINE ในภายหลัง"}
                 </p>
               </div>
@@ -482,8 +518,11 @@ export default function UsersManagementPage() {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-5 custom-scrollbar">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+              <div className="grid grid-cols-1 md:grid-cols-2 mb-5">{editingUser?.is_super_admin?<p className="md:col-span-2 rounded-xl bg-amber-50 p-4 text-sm text-amber-700">บัญชี Super Admin ป้องกันการจัดการจากหน้าพนักงาน ใช้หน้าข้อมูลส่วนตัวสำหรับเจ้าของบัญชี</p>:editingUser?.id&&can('users.accounts')?<EmployeeAccountForm key={String(editingUser.id)} employeeId={String(editingUser.id)}/>:!editingUser&&can('users.accounts')?<p className="md:col-span-2 rounded-xl bg-blue-50 p-3 text-sm text-blue-700">บันทึกพนักงานก่อน แล้วเปิดแก้ไขเพื่อตั้ง Username/Password</p>:null}</div>
+            <fieldset disabled={!can(editingUser?"users.edit":"users.create")||(editingUser?.is_super_admin===true)} className="grid grid-cols-1 md:grid-cols-2 content-start items-start gap-5">
+              {[["division","ฝ่าย"],["branch","สาขา"],["work_group","กลุ่มทำงาน"]].map(([key,label]) => <label key={key} className="block">{label}{key==="work_group"?<AdminSelect name={key} disabled={!can("groups.members")||!can(editingUser?"users.edit":"users.create")||editingUser?.is_super_admin} defaultValue={editingUser?.[key]||""} aria-label={label}><option value="">ยังไม่กำหนดกลุ่มหลัก</option>{editingUser?.work_group&&!lookups.groups?.some((g:any)=>g.name===editingUser.work_group)&&<option value={editingUser.work_group}>{editingUser.work_group} (กลุ่มปัจจุบัน)</option>}{lookups.groups?.map((g:any)=><option key={g.id} value={g.name}>{g.name}</option>)}</AdminSelect>:<input name={key} defaultValue={editingUser?.[key]||""} className="block w-full border rounded-lg p-3"/>}</label>)}
+              <div className="contents">
                 <div>
                   <label className="text-xs font-bold text-gray-700 mb-1.5 block">
                     ชื่อจริง <span className="text-red-500">*</span>
@@ -512,7 +551,7 @@ export default function UsersManagementPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="contents">
                 <div>
                   <label className="text-xs font-bold text-gray-700 mb-1.5 block">
                     ชื่อเล่น
@@ -552,7 +591,7 @@ export default function UsersManagementPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="contents">
                 <div>
                   <label className="text-xs font-bold text-gray-700 mb-1.5 block">
                     แผนก
@@ -583,15 +622,16 @@ export default function UsersManagementPage() {
                 <label className="text-xs font-bold text-gray-700 mb-1.5 block">
                   สิทธิ์การใช้งาน (Role)
                 </label>
-                <select
+                <AdminSelect
                   name="role"
+                  disabled={!can('permissions.manage')||!can(editingUser?'users.edit':'users.create')||editingUser?.is_super_admin}
                   defaultValue={editingUser?.role || "Staff"}
                   className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none"
                 >
                   <option value="Staff">พนักงานทั่วไป (Staff)</option>
                   <option value="Manager">ผู้จัดการ (Manager)</option>
                   <option value="Admin">ผู้ดูแลระบบ (Admin)</option>
-                </select>
+                </AdminSelect>
               </div>
 
               <div>
@@ -624,7 +664,7 @@ export default function UsersManagementPage() {
                   </span>
                 </label>
               </div>
-            </div>
+            </fieldset></div>
 
             <div className="p-6 border-t border-gray-100 bg-gray-50/50 shrink-0 flex gap-3">
               <button
@@ -636,7 +676,8 @@ export default function UsersManagementPage() {
               </button>
               <button
                 type="submit"
-                disabled={isSaving}
+                hidden={!can(editingUser?'users.edit':'users.create')||editingUser?.is_super_admin}
+                disabled={isSaving||(!can(editingUser?"users.edit":"users.create"))||editingUser?.is_super_admin}
                 className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200 flex items-center justify-center gap-2 disabled:opacity-70 cursor-pointer"
               >
                 {isSaving ? (

@@ -1,0 +1,58 @@
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const path = require('node:path');
+const ts = require('typescript');
+const code = ts.transpileModule(fs.readFileSync('lib/auth/crypto.ts','utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
+const crypto = { exports: {} }; vm.runInNewContext(code, { exports: crypto.exports, require, Buffer });
+test('salted password hashes reject wrong passwords; bearer tokens have entropy', async () => {
+  const a = await crypto.exports.hashPassword('test-password-123');
+  const b = await crypto.exports.hashPassword('test-password-123');
+  assert.notEqual(a,b);
+  assert.equal(await crypto.exports.verifyPassword('test-password-123',a),true);
+  assert.equal(await crypto.exports.verifyPassword('wrong',a),false);
+  assert.equal(await crypto.exports.verifyPassword('test-password-123','plain-text'),false);
+  assert.match(crypto.exports.newToken(),/^[a-f0-9]{64}$/);
+  assert.notEqual(crypto.exports.newToken(),crypto.exports.newToken());
+});
+test('database binding, admin lockout protection, revocation, throttling and grants', { skip: !process.env.AUTH_TEST_PGLITE }, async () => {
+  const { PGlite } = require(process.env.AUTH_TEST_PGLITE);
+  const db = new PGlite();
+  try {
+    await db.exec(`create role anon; create role authenticated; create role service_role;
+      create table employees(id bigint primary key,role text,is_active boolean,line_user_id text,email text);
+      insert into employees values(1,'Admin',true,'line_admin','admin@example.test'),(2,'Staff',true,null,null),(3,'Staff',false,null,null);`);
+    await db.exec(fs.readFileSync(path.join('supabase','migrations','202610110001_office_auth.sql'),'utf8'));
+    await assert.rejects(db.query('select office_set_line_login(false)'),/NO_PASSWORD_ADMIN/);
+    await db.query("select office_set_credentials('1','admin.test','hash-a')");
+    await db.query("select office_set_credentials('1','admin.renamed',null)");
+    assert.equal((await db.query("select password_hash from office_credentials where employee_id='1'")).rows[0].password_hash,'hash-a');
+    await db.query("select office_set_credentials('2','staff.test','hash-b')");
+    assert.equal((await db.query('select line_user_id from employees where id=2')).rows[0].line_user_id,'employee_2');
+    await assert.rejects(db.query("select office_set_credentials('2','admin.renamed',null)"),/unique/);
+    await db.query("select office_issue_session('2','device-a','session-a','password')");
+    await assert.rejects(db.query("select office_issue_session('2','device-b','session-b','password')"),/DEVICE_MISMATCH/);
+    await assert.rejects(db.query("select office_issue_session('3','device-a','session-c','password')"),/INACTIVE_EMPLOYEE/);
+    await db.query("select office_issue_session('2','device-a','session-new','password')");
+    assert.equal((await db.query("select count(*)::integer as n from office_sessions where employee_id='2'")).rows[0].n,1);
+    await db.query("select office_set_credentials('2','staff.test','new-password-hash')");
+    assert.equal((await db.query("select count(*)::integer as n from office_sessions where employee_id='2'")).rows[0].n,0);
+    await db.query("select office_reset_device('2')");
+    await db.query("select office_issue_session('2','device-b','session-b','password')");
+    await db.query("select office_issue_session('1','admin-device','admin-session','line')");
+    await db.query('select office_set_line_login(false)');
+    assert.equal((await db.query("select count(*)::integer as n from office_sessions where auth_method='line'")).rows[0].n,0);
+    await assert.rejects(db.query("select office_issue_session('1','admin-device','line-disabled','line')"),/LINE_DISABLED/);
+    for(let i=0;i<5;i++) assert.equal((await db.query("select office_login_attempt('username-key') as allowed")).rows[0].allowed,true);
+    assert.equal((await db.query("select office_login_attempt('username-key') as allowed")).rows[0].allowed,false);
+    await db.query("update office_login_attempts set window_start=now()-interval '16 minutes'");
+    assert.equal((await db.query("select office_login_attempt('username-key') as allowed")).rows[0].allowed,true);
+    await db.exec('set role anon');
+    await assert.rejects(db.query('select * from office_credentials'),/permission denied/);
+    await assert.rejects(db.query("select office_reset_device('1')"),/permission denied/);
+    await db.exec('reset role');
+    await db.exec('set role authenticated');
+    await assert.rejects(db.query('select * from office_sessions'),/permission denied/);
+  } finally { await db.close(); }
+});

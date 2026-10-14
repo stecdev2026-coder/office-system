@@ -1,0 +1,26 @@
+import {NextRequest,NextResponse} from 'next/server';
+import {AuthError,checkOrigin,database,failure,publicEmployee} from '@/lib/auth/server';
+import {requirePermission,protectedEmployeeIds} from '@/lib/permissions/server';
+import {allRows,uuid} from '@/lib/groups/database';
+import {randomUUID} from 'node:crypto';
+export async function GET(){try{await requirePermission('groups.view');const [groups,members,employees,schedules,superIds]=await Promise.all([allRows('work_groups'),allRows('work_group_members'),allRows('employees','id,first_name,last_name,employee_code,branch,is_active'),allRows('work_schedules'),protectedEmployeeIds()]);return NextResponse.json({groups,members,schedules,employees:employees.map(e=>({...publicEmployee(e),is_super_admin:superIds.includes(e.id)}))},{headers:{'Cache-Control':'no-store'}});}catch(e){return failure(e);}}
+export async function POST(request:NextRequest){try{checkOrigin(request);const b=await request.json(),db=database();
+ if(b.type==='save'){
+  const p=b.value;if(!p||(p.id&&!uuid(p.id))||(p.config===undefined&&p.members===undefined))throw new AuthError('ข้อมูลกลุ่มไม่ถูกต้อง');
+  const auth=await requirePermission(p.config!==undefined?'groups.edit':'groups.members');
+  if(p.config!==undefined){const c=p.config;if(!c||typeof c.name!=='string'||!c.name.trim()||c.name.length>150||typeof c.branch!=='string'||c.branch.length>100||typeof c.active!=='boolean'||!Array.isArray(c.allowed_weekdays)||!c.allowed_weekdays.length||c.allowed_weekdays.some((d:unknown)=>!Number.isInteger(d)||Number(d)<0||Number(d)>6)||!Number.isInteger(c.weekly_days)||c.weekly_days<0||c.weekly_days>new Set(c.allowed_weekdays).size)throw new AuthError('ตรวจสอบชื่อ วันอนุญาต และจำนวนวันทำงาน');}
+  if(p.members!==undefined){await requirePermission('groups.members');if(!Array.isArray(p.members)||p.members.some((m:any)=>!m||!uuid(m.employee_id)||typeof m.is_primary!=='boolean'||(m.days!==null&&(!Number.isInteger(m.days)||m.days<0||m.days>7)))||new Set(p.members.map((m:any)=>m.employee_id)).size!==p.members.length)throw new AuthError('สมาชิกหรือจำนวนวันทำงานไม่ถูกต้อง');}
+  if(p.id){const found=await db.from('work_groups').select('id').eq('id',p.id).maybeSingle();if(found.error)throw found.error;if(!found.data)throw new AuthError('ไม่พบกลุ่มงาน',404);}
+  const r=await db.rpc('office_save_work_group',{p_actor_id:auth.employee.id,p_id:p.id||randomUUID(),p_config:p.config??null,p_members:p.members??null});if(r.error)throw new AuthError(r.error.message.includes('SUPER_ADMIN_PROTECTED')?'ไม่สามารถนำ Super Admin เข้ากลุ่ม':r.error.message.includes('INVALID_WEEKLY_DAYS')||r.error.message.includes('INVALID_MEMBERS')?'จำนวนวันต่อคนต้องไม่เกินวันอนุญาตของกลุ่ม':'บันทึกไม่สำเร็จ ตรวจชื่อกลุ่มและสมาชิก ไม่มีการบันทึกบางส่วน',409);return NextResponse.json({ok:true,id:r.data});
+ }else if(b.type==='group'){
+  await requirePermission('groups.edit');const p=b.value;if(typeof p.name!=='string'||!p.name.trim()||p.name.length>150||!Array.isArray(p.allowed_weekdays)||!p.allowed_weekdays.length||p.allowed_weekdays.some((d:unknown)=>!Number.isInteger(d)||Number(d)<0||Number(d)>6)||!Number.isInteger(p.weekly_days)||p.weekly_days<0||p.weekly_days>new Set(p.allowed_weekdays).size)throw new AuthError('ตรวจสอบชื่อ วันทำงาน และจำนวนวันต่อสัปดาห์');
+  const row={name:p.name.trim(),branch:String(p.branch||'').slice(0,100),allowed_weekdays:[...new Set(p.allowed_weekdays)],weekly_days:p.weekly_days,active:p.active!==false};
+  if(p.id){if(!uuid(p.id))throw new AuthError('กลุ่มไม่ถูกต้อง');const invalid=await db.from('work_group_members').select('employee_id').eq('group_id',p.id).gt('required_weekly_days',row.allowed_weekdays.length).limit(1);if(invalid.error)throw invalid.error;if(invalid.data.length)throw new AuthError('ลดวันไม่ได้ มีสมาชิกที่กำหนดจำนวนวันมากกว่าวันที่เลือก');const r=await db.from('work_groups').update(row).eq('id',p.id);if(r.error)throw new AuthError('ชื่อกลุ่มซ้ำหรือข้อมูลไม่ถูกต้อง',409);}else{const r=await db.from('work_groups').insert(row);if(r.error)throw new AuthError('ชื่อกลุ่มนี้มีแล้ว',409);}
+ }else if(b.type==='member'){
+  await requirePermission('groups.members');if(!uuid(b.groupId)||!uuid(b.employeeId)||typeof b.enabled!=='boolean'||(b.days!==null&&b.days!==undefined&&(!Number.isInteger(b.days)||b.days<0||b.days>7)))throw new AuthError('ข้อมูลสมาชิกไม่ถูกต้อง');
+  const r=await db.rpc('office_set_group_member',{p_group_id:b.groupId,p_employee_id:b.employeeId,p_enabled:b.enabled,p_days:b.days??null,p_primary:!!b.primary,p_effective:b.effectiveFrom||null});if(r.error)throw new AuthError(r.error.message.includes('SUPER_ADMIN_PROTECTED')?'Super Admin ไม่สามารถจัดการในกลุ่มได้':'บันทึกสมาชิกไม่สำเร็จ ตรวจจำนวนวันทำงานและกลุ่ม',409);
+ }else if(b.type==='schedule'){
+  await requirePermission('groups.edit');const p=b.value;if(!p.name?.trim()||!Array.isArray(p.weekdays)||!p.weekdays.length||p.weekdays.some((d:unknown)=>!Number.isInteger(d)||Number(d)<0||Number(d)>6))throw new AuthError('ตารางงานไม่ถูกต้อง');
+  const row={name:p.name,branch:p.branch||'',work_group:p.work_group||'',weekdays:[...new Set(p.weekdays)]};const q=p.id?db.from('work_schedules').update(row).eq('id',p.id):db.from('work_schedules').insert(row);const r=await q;if(r.error)throw r.error;
+ }else throw new AuthError('คำขอไม่ถูกต้อง');return NextResponse.json({ok:true});
+}catch(e){return failure(e);}}

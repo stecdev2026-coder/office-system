@@ -38,28 +38,11 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      const deviceToken = crypto.randomUUID();
+      const liff = (await import('@line/liff')).default;
+      const response = await fetch('/api/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...formData, accessToken: liff.getAccessToken() }) });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'ลงทะเบียนไม่สำเร็จ');
 
-      const { data, error } = await supabase
-        .from("employees")
-        .insert([
-          {
-            line_user_id: lineProfile.userId,
-            first_name: formData.firstName,
-            last_name: formData.lastName,
-            nickname: formData.nickname,
-            position: formData.position,
-            role: formData.position,
-            status: "pending",
-            device_token: deviceToken,
-          },
-        ])
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      localStorage.setItem("device_token", deviceToken);
       localStorage.setItem("line_profile", JSON.stringify(lineProfile));
       localStorage.removeItem("temp_line_profile");
 
@@ -74,7 +57,7 @@ export default function RegisterPage() {
 
   return (
     // 🌟 1. ขยาย Container หลักสำหรับ iPad (md:max-w-xl) ตรงกลางจอพอดี
-    <div className="fixed inset-x-0 top-0 bottom-0 w-full max-w-md md:max-w-xl mx-auto bg-[#FAFAFA] flex flex-col overflow-hidden md:border-x md:border-gray-200 md:shadow-2xl md:my-0">
+    <div className="app-page">
       {/* 🌟 2. Header (Fixed): ปรับ Padding สำหรับ iPad */}
       <div
         className="pt-16 md:pt-20 pb-8 md:pb-12 bg-cover bg-center relative overflow-hidden bg-blue-50 shrink-0"

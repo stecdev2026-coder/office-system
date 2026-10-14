@@ -1,4 +1,5 @@
 "use client";
+import BackButton from "@/components/BackButton";
 
 import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
@@ -86,7 +87,7 @@ export default function HolidayPage() {
 
   return (
     // 🌟 1. ล็อกหน้าจอหลักไม่ให้มี Scrollbar นอกกรอบ
-    <div className="fixed inset-0 w-full max-w-md md:max-w-3xl lg:max-w-4xl mx-auto h-full bg-[#FAFAFA] flex flex-col overflow-hidden md:border-x md:border-gray-200 md:shadow-2xl">
+    <div className="app-page">
       
       {/* Header สีน้ำเงิน */}
       <div
@@ -96,12 +97,7 @@ export default function HolidayPage() {
         <div className="absolute inset-0 bg-blue-600/90 mix-blend-multiply"></div>
         <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent"></div>
         <div className="px-6 md:px-10 flex items-center justify-between relative z-10">
-          <button
-            onClick={() => router.push("/hr")}
-            className="cursor-pointer w-10 h-10 bg-white/20 backdrop-blur-md border border-white/30 rounded-full flex items-center justify-center text-white active:scale-95 transition-all shadow-sm"
-          >
-            <ChevronLeft size={24} />
-          </button>
+          <BackButton fallback="/hr" className="cursor-pointer w-10 h-10 bg-white/20 backdrop-blur-md border border-white/30 rounded-full flex items-center justify-center text-white active:scale-95 transition-all shadow-sm" />
           <h1 className="text-base md:text-lg font-bold text-white absolute left-1/2 -translate-x-1/2 drop-shadow-md">
             วันหยุดบริษัท
           </h1>

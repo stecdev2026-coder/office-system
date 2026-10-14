@@ -1,0 +1,17 @@
+{
+  "testedAt": "2026-10-11T15:26:51.470Z",
+  "environment": "Local Docker MySQL 8.4; host Node API; pool 10; isolated synthetic data",
+  "concurrentUsers": 200,
+  "successfulLogins": 200,
+  "savedRecords": 200,
+  "duplicateRequestsRejected": 200,
+  "unauthenticatedReadRejected": true,
+  "crossOriginRejected": true,
+  "wrongPasswordRejected": true,
+  "secondDeviceRejected": true,
+  "elapsedSeconds": 3.96,
+  "loginP50Ms": 2351,
+  "loginP95Ms": 3764,
+  "loginMaxMs": 3913,
+  "limitation": "One local synthetic burst; not a production capacity guarantee"
+}

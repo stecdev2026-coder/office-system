@@ -1,0 +1,17 @@
+export type WeeklyInput={employees:any[];groups:any[];members:any[];attendance:any[];leaves:any[];holidays:any[]};
+const DAY=86400000;
+export const isoDate=(date:Date)=>date.toISOString().slice(0,10);
+export function parseDay(day:string){if(!/^\d{4}-\d{2}-\d{2}$/.test(day))throw Error('Invalid date');const d=new Date(day+'T00:00:00Z');if(!Number.isFinite(d.getTime())||isoDate(d)!==day)throw Error('Invalid date');return d;}
+export function monday(day:string){const d=parseDay(day);d.setUTCDate(d.getUTCDate()-((d.getUTCDay()+6)%7));return d;}
+function dayList(start:Date,count:number){return Array.from({length:count},(_,i)=>new Date(start.getTime()+i*DAY));}
+function eligibleCount(start:string,end:string,allowed:number[],holidays:Set<string>){const a=parseDay(start),b=parseDay(end),length=Math.floor((b.getTime()-a.getTime())/DAY)+1;if(length<=0)return 0;let total=Math.floor(length/7)*allowed.length;for(let i=0;i<length%7;i++)if(allowed.includes((a.getUTCDay()+i)%7))total++;for(const h of holidays){if(h>=start&&h<=end&&allowed.includes(parseDay(h).getUTCDay()))total--;}return Math.max(0,total);}
+export function weeklyAbsence(input:WeeklyInput,start:string,end:string,today:string){const first=monday(start),last=monday(end);const holidaySet=new Set<string>(input.holidays.map(h=>h.date));const records:any[]=[];
+ for(const e of input.employees){if(!e.is_active||e.is_super_admin)continue;const membership=input.members.find(m=>m.employee_id===e.id&&m.is_primary),group=input.groups.find(g=>g.id===membership?.group_id&&g.active);for(let week=new Date(first);week<=last;week=new Date(week.getTime()+7*DAY)){
+  const dates=dayList(week,7),weekStart=isoDate(week),weekEnd=isoDate(dates[6]);const closed=weekEnd<today,earliest=[e.employment_start_date||String(e.created_at).slice(0,10),membership?.effective_from||weekStart].sort().at(-1)||weekStart;
+  const base={employeeId:e.id,name:[e.first_name,e.last_name].filter(Boolean).join(' '),employeeCode:e.employee_code,branch:e.branch,group:group?.name||'—',weekStart,weekEnd,closed};
+  if(!group){records.push({...base,status:'unconfigured',requiredDays:null,workedDays:0,leaveDays:0,absentDays:null});continue;}
+  if(earliest>weekEnd){records.push({...base,status:'not_started',requiredDays:0,workedDays:0,leaveDays:0,absentDays:null});continue;}
+  const allowed=group.allowed_weekdays as number[],required=membership.required_weekly_days??group.weekly_days,holidayCount=dates.filter(d=>allowed.includes(d.getUTCDay())&&holidaySet.has(isoDate(d))).length;
+  let worked=0,leave=0;for(const date of dates){const day=isoDate(date);if(day<earliest||!allowed.includes(date.getUTCDay()))continue;const present=input.attendance.some(a=>a.line_user_id===e.line_user_id&&a.work_date===day&&a.check_in_time);if(present){worked++;continue;}if(holidaySet.has(day))continue;let dayCredit=0;for(const l of input.leaves){if(l.line_user_id!==e.line_user_id||l.status!=='approved'||day<l.start_date||day>l.end_date)continue;const divisor=eligibleCount(l.start_date,l.end_date,allowed,holidaySet);if(divisor>0)dayCredit+=Number(l.total_days)/divisor;}leave+=Math.min(1,dayCredit);}
+  const expected=Math.max(0,required-holidayCount),partial=earliest>weekStart,status=!closed?'pending':partial?'partial':'final';records.push({...base,status,requiredDays:expected,workedDays:worked,leaveDays:Number(leave.toFixed(3)),absentDays:status==='final'?Number(Math.max(0,expected-worked-leave).toFixed(3)):null});
+ }}return records;}

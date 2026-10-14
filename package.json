@@ -6,7 +6,12 @@
     "dev": "next dev --webpack",
     "build": "next build --webpack",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "mysql:trial:up": "docker compose --env-file .env.mysql.local -f compose.mysql.yml up -d --wait",
+    "mysql:trial:start": "node --env-file=.env.mysql.local scripts/mysql-trial/server.mjs",
+    "mysql:trial:test": "node --env-file=.env.mysql.local scripts/mysql-trial/load-test.mjs",
+    "mysql:trial:backup": "node scripts/mysql-trial/backup.mjs",
+    "mysql:trial:stop": "docker compose --env-file .env.mysql.local -f compose.mysql.yml stop"
   },
   "dependencies": {
     "@ducanh2912/next-pwa": "^10.2.9",
@@ -14,10 +19,14 @@
     "@supabase/ssr": "^0.12.3",
     "@supabase/supabase-js": "^2.110.8",
     "clsx": "^2.1.1",
+    "exceljs": "^4.4.0",
     "lucide-react": "^1.26.0",
+    "mysql2": "^3.24.5",
     "next": "16.2.11",
     "react": "19.2.4",
+    "react-datepicker": "^9.1.0",
     "react-dom": "19.2.4",
+    "react-select": "^5.10.2",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.6.0"
   },

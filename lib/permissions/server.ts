@@ -1,0 +1,10 @@
+import 'server-only';
+import {AuthError,currentSession,database} from '@/lib/auth/server';
+import {hasPermission,canAccessBackoffice} from './catalog';
+export async function permissionsFor(employeeId:string){const db=database();const [superRole,roles]=await Promise.all([db.from('office_super_admins').select('employee_id').eq('employee_id',employeeId).maybeSingle(),db.from('employee_permission_roles').select('permission_roles(permissions)').eq('employee_id',employeeId)]);if(superRole.error||roles.error)throw new AuthError('ตรวจสอบ Permission ไม่สำเร็จ',503);const isSuperAdmin=!!superRole.data;const permissions=isSuperAdmin?['*']:[...new Set((roles.data||[]).flatMap((row:any)=>row.permission_roles?.permissions||[]))] as string[];return {isSuperAdmin,permissions};}
+export async function permissionSession(){const auth=await currentSession();return {...auth,...await permissionsFor(String(auth.employee.id))};}
+export async function requirePermission(key:string){const auth=await permissionSession();if(!hasPermission(auth.permissions,key))throw new AuthError('ไม่มีสิทธิ์ใช้งานรายการนี้',403);return auth;}
+export async function requireBackoffice(){const auth=await permissionSession();if(!canAccessBackoffice(auth.permissions))throw new AuthError('ไม่มีสิทธิ์เข้าใช้งานหลังบ้าน',403);return auth;}
+export async function rejectSuperTarget(employeeId:string){const r=await database().from('office_super_admins').select('employee_id').eq('employee_id',employeeId).maybeSingle();if(r.error)throw r.error;if(r.data)throw new AuthError('Super Admin ไม่สามารถจัดการจากหน้าพนักงานหรือมอบสิทธิ์ได้',403);}
+export async function protectedEmployeeIds(){const r=await database().from('office_super_admins').select('employee_id');if(r.error)throw r.error;return r.data.map(row=>row.employee_id);}
+export async function rejectHigherPermissionTarget(auth:{permissions:string[];isSuperAdmin:boolean},employeeId:string){if(auth.isSuperAdmin)return;const target=await permissionsFor(employeeId);if(target.permissions.some(key=>!hasPermission(auth.permissions,key)))throw new AuthError('จัดการบัญชีที่มีสิทธิ์สูงกว่าตัวเองไม่ได้',403);}

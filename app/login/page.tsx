@@ -1,377 +1,100 @@
 "use client";
-
-import React, { useState, useEffect } from "react";
-import {
-  MessageCircle,
-  Loader2,
-  ScanLine,
-  Mail,
-  ArrowLeft,
-  KeyRound,
-  MapPinHouse,
-} from "lucide-react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/utils/supabase/client";
-import { toast } from "sonner";
-import Image from "next/image";
-
+import { useEffect, useState, type FormEvent } from 'react';
+import { useRouter } from 'next/navigation';
+import { Loader2, MessageCircle, MapPinHouse, Eye, EyeOff } from 'lucide-react';
+import { toast } from 'sonner';
+import { createClient } from '@/utils/supabase/client';
+import { deviceTokenFor, saveLogin } from '@/lib/auth/client';
 export default function LoginPage() {
-  const [loading, setLoading] = useState(true);
-  const [statusText, setStatusText] = useState("กำลังตรวจสอบระบบ...");
-
-  const [isEmailMode, setIsEmailMode] = useState(false);
-  const [showOtpInput, setShowOtpInput] = useState(false);
-  const [emailInput, setEmailInput] = useState("");
-  const [otpInput, setOtpInput] = useState("");
-
   const router = useRouter();
-  const supabase = createClient();
-
-  const logoUrl = "";
-  const bgImageUrl = "/img/login-bg.jpg";
-
+  const [username, setUsername] = useState(''); const [password, setPassword] = useState('');
+  const [visible, setVisible] = useState(false); const [busy, setBusy] = useState(false);
+  const [lineEnabled, setLineEnabled] = useState(false); const [setupError, setSetupError] = useState('');
+  const [mode, setMode] = useState<'password' | 'email'>('password');
+  const [email, setEmail] = useState(''); const [otp, setOtp] = useState(''); const [otpSent, setOtpSent] = useState(false);
   useEffect(() => {
-    import("@line/liff")
-      .then((liff) => {
-        const liffId = process.env.NEXT_PUBLIC_LIFF_ID;
-        if (!liffId) {
-          setStatusText("เกิดข้อผิดพลาด: ไม่พบ LIFF ID");
-          setLoading(false);
-          return;
-        }
-
-        liff.default
-          .init({ liffId: liffId })
-          .then(() => {
-            if (liff.default.isLoggedIn()) {
-              setStatusText("กำลังดึงข้อมูลพนักงาน...");
-              checkEmployeeData(liff.default);
-            } else {
-              setLoading(false);
-              setStatusText("ระบบลงเวลาและจัดการวันลาสำหรับพนักงาน");
-            }
-          })
-          .catch((err) => {
-            console.error(err);
-            setStatusText("เกิดข้อผิดพลาดในการเชื่อมต่อ LINE");
-            setLoading(false);
-          });
-      })
-      .catch((err) => console.error(err));
+    let active = true;
+    fetch('/api/auth/session', { cache: 'no-store' }).then(async response => {
+      if (response.ok && active) { const data = await response.json(); localStorage.setItem('employee_data', JSON.stringify(data.employee)); localStorage.setItem('line_profile', JSON.stringify(data.profile)); router.replace('/'); }
+    }).catch(() => {});
+    fetch('/api/auth/settings', { cache: 'no-store' }).then(async response => {
+      const data = await response.json(); if (!active) return;
+      if (!response.ok) { setSetupError(data.error); return; }
+      setLineEnabled(data.line_login_enabled);
+      if (data.line_login_enabled && new URLSearchParams(location.search).get('line') === '1') void loginLine();
+    }).catch(() => { if (active) setSetupError('เชื่อมต่อระบบไม่ได้ กรุณาลองใหม่'); });
+    return () => { active = false; };
   }, [router]);
-
-  const checkEmployeeData = async (liffInstance: any) => {
+  async function finish(endpoint: string, body: Record<string, string>, identity: string) {
+    const deviceToken = deviceTokenFor(identity);
+    const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...body, deviceToken }) });
+    const data = await response.json(); if (!response.ok) throw new Error(data.error);
+    if (data.registrationRequired) { localStorage.setItem('temp_line_profile', JSON.stringify(data.profile)); router.replace('/register'); return; }
+    if (data.pending) { localStorage.setItem('line_profile', JSON.stringify(data.profile)); router.replace('/pending'); return; }
+    saveLogin(data, deviceToken, identity); toast.success('เข้าสู่ระบบสำเร็จ'); router.replace('/');
+  }
+  async function submitPassword(event: FormEvent) {
+    event.preventDefault(); if (busy) return; setBusy(true);
+    try { await finish('/api/auth/login', { username, password }, username.trim().toLowerCase()); }
+    catch (error) { toast.error(error instanceof Error ? error.message : 'เข้าสู่ระบบไม่สำเร็จ'); }
+    finally { setPassword(''); setBusy(false); }
+  }
+  async function loginLine() {
+    setBusy(true);
     try {
-      const profile = await liffInstance.getProfile();
-      const lineUserId = profile.userId;
-
-      const { data, error } = await supabase
-        .from("employees")
-        .select("*")
-        .eq("line_user_id", lineUserId)
-        .single();
-
-      if (error || !data) {
-        localStorage.setItem("temp_line_profile", JSON.stringify(profile));
-        router.push("/register");
-        return;
-      }
-
-      // 🌟 แก้ไข: เปลี่ยนมาเช็ค is_active === false แทน status === "pending"
-      if (data.is_active === false) {
-        localStorage.setItem("line_profile", JSON.stringify(profile));
-        router.push("/pending");
-        return;
-      }
-
-      const localDeviceToken = localStorage.getItem("device_token");
-      if (!localDeviceToken || localDeviceToken !== data.device_token) {
-        toast.error("ไม่อนุญาตให้เข้าสู่ระบบจากอุปกรณ์อื่น");
-        setLoading(false);
-        setStatusText("อุปกรณ์นี้ไม่ได้รับอนุญาต");
-        return;
-      }
-
-      localStorage.setItem("employee_data", JSON.stringify(data));
-      localStorage.setItem("line_profile", JSON.stringify(profile));
-      router.push("/");
-    } catch (error) {
-      toast.error("เกิดข้อผิดพลาดในการตรวจสอบข้อมูล");
-      setLoading(false);
-    }
-  };
-
-  const handleLineLogin = async () => {
+      const id = process.env.NEXT_PUBLIC_LIFF_ID; if (!id) throw new Error('ยังไม่ได้ตั้งค่า LIFF ID');
+      const liff = (await import('@line/liff')).default; await liff.init({ liffId: id });
+      if (!liff.isLoggedIn()) { liff.login({ redirectUri: `${location.origin}/login?line=1` }); return; }
+      const profile = await liff.getProfile(); const accessToken = liff.getAccessToken();
+      if (!accessToken) throw new Error('กรุณาเข้าสู่ LINE ใหม่');
+      await finish('/api/auth/line', { accessToken }, profile.userId);
+    } catch (error) { toast.error(error instanceof Error ? error.message : 'เข้าสู่ LINE ไม่สำเร็จ'); }
+    finally { setBusy(false); }
+  }
+  async function submitEmail(event: FormEvent) {
+    event.preventDefault(); if (busy) return; setBusy(true); const supabase = createClient();
     try {
-      const liff = (await import("@line/liff")).default;
-      if (!liff.isLoggedIn()) liff.login();
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  const handleSendOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!emailInput) return;
-
-    setLoading(true);
-    setStatusText("กำลังตรวจสอบอีเมล...");
-
-    try {
-      const { data: empData, error: empError } = await supabase
-        .from("employees")
-        .select("*")
-        .eq("email", emailInput)
-        .single();
-
-      if (empError || !empData) {
-        toast.error("ไม่พบอีเมลนี้ในระบบ หรือคุณยังไม่ได้ผูกอีเมลสำรอง");
-        setLoading(false);
-        setStatusText("กรุณาลองใหม่อีกครั้ง");
-        return;
+      if (!otpSent) {
+        const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
+        if (error) throw new Error('ส่ง OTP ไม่สำเร็จ กรุณาตรวจสอบอีเมล');
+        setOtpSent(true); toast.success('ส่ง OTP ไปยังอีเมลแล้ว');
+      } else {
+        const { data, error } = await supabase.auth.verifyOtp({ email, token: otp, type: 'email' });
+        if (error || !data.session) throw new Error('OTP ไม่ถูกต้องหรือหมดอายุ');
+        try { await finish('/api/auth/email', { accessToken: data.session.access_token }, email.toLowerCase()); }
+        finally { await supabase.auth.signOut(); }
       }
-
-      // 🌟 แก้ไข: เปลี่ยนมาเช็ค is_active === false
-      if (empData.is_active === false) {
-        toast.warning("บัญชีนี้กำลังรอการอนุมัติจากแอดมิน");
-        router.push("/pending");
-        return;
-      }
-
-      const { error: authError } = await supabase.auth.signInWithOtp({
-        email: emailInput,
-      });
-
-      if (authError) throw authError;
-
-      toast.success("ส่งรหัส 6 หลักไปที่อีเมลของคุณแล้ว");
-      setShowOtpInput(true);
-      setStatusText("กรุณากรอกรหัส 6 หลักจากอีเมล");
-      setLoading(false);
-    } catch (error) {
-      toast.error("ส่ง OTP ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
-      setLoading(false);
-    }
-  };
-
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!otpInput) return;
-
-    setLoading(true);
-    setStatusText("กำลังยืนยันรหัส OTP...");
-
-    try {
-      const { data: authData, error: authError } =
-        await supabase.auth.verifyOtp({
-          email: emailInput,
-          token: otpInput,
-          type: "email",
-        });
-
-      if (authError) throw authError;
-
-      const { data: empData, error: empError } = await supabase
-        .from("employees")
-        .select("*")
-        .eq("email", emailInput)
-        .single();
-
-      const newDeviceToken = crypto.randomUUID();
-
-      await supabase
-        .from("employees")
-        .update({ device_token: newDeviceToken })
-        .eq("id", empData.id);
-
-      // 🌟 ป้องกันกรณีที่ล็อกอินด้วยอีเมลแล้วยังไม่มี line_user_id
-      const fallbackProfile = {
-        userId: empData.line_user_id || `temp_${empData.id}`,
-        displayName:
-          `${empData.first_name || ""} ${empData.last_name || ""}`.trim() ||
-          empData.email,
-        pictureUrl: "",
-      };
-
-      localStorage.setItem("device_token", newDeviceToken);
-      localStorage.setItem("employee_data", JSON.stringify(empData));
-      localStorage.setItem("line_profile", JSON.stringify(fallbackProfile));
-
-      toast.success("ยืนยันตัวตนสำเร็จ! ยินดีต้อนรับครับ");
-      router.push("/");
-    } catch (error) {
-      toast.error("รหัส OTP ไม่ถูกต้อง หรือหมดอายุแล้ว");
-      setLoading(false);
-      setStatusText("กรุณากรอกรหัส 6 หลักจากอีเมล");
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 w-full h-full bg-[#FAFAFA] flex flex-col overflow-hidden">
-      <div
-        className={`absolute top-0 left-1/2 -translate-x-1/2 w-[150%] md:w-[120%] h-[35%] md:h-[45%] rounded-b-[50%] pointer-events-none ${
-          bgImageUrl
-            ? "bg-cover bg-center"
-            : "bg-gradient-to-b from-blue-50 to-blue-100/50"
-        }`}
-        style={bgImageUrl ? { backgroundImage: `url('${bgImageUrl}')` } : {}}
-      >
-        {bgImageUrl && (
-          <div className="absolute inset-0 bg-white/30 rounded-b-[50%]"></div>
-        )}
-      </div>
-
-      <div className="relative z-10 flex flex-col items-center justify-center flex-1 px-8 md:px-12 pt-10 md:pt-16">
-        <div className="relative w-24 h-24 md:w-32 md:h-32 bg-white rounded-3xl md:rounded-[32px] shadow-md border border-gray-50 flex items-center justify-center mb-6 md:mb-8 overflow-hidden shrink-0">
-          {logoUrl ? (
-            <Image
-              src={logoUrl}
-              alt="Logo"
-              fill
-              className="object-contain p-2 md:p-3"
-            />
-          ) : (
-            <MapPinHouse size={55} className="text-blue-600 md:w-20 md:h-20" />
-          )}
-        </div>
-
-        <h1 className="text-2xl md:text-4xl font-bold text-gray-800 mb-2 md:mb-4 tracking-tight">
-          OFFICE SYSTEM
-        </h1>
-        <p
-          className={`text-sm md:text-lg text-center mb-10 md:mb-14 ${loading ? "text-blue-500 font-medium animate-pulse" : "text-gray-500"}`}
-        >
-          {statusText}
-        </p>
-
-        {!isEmailMode && !showOtpInput && (
-          <div className="w-full flex flex-col items-center gap-3 md:gap-5">
-            <button
-              onClick={handleLineLogin}
-              disabled={loading}
-              className={`cursor-pointer w-full max-w-[320px] md:max-w-[400px] font-bold md:text-lg py-4 md:py-5 rounded-[16px] md:rounded-[24px] flex items-center justify-center gap-3 transition-all ${loading ? "bg-gray-100 text-gray-400" : "bg-[#06C755] hover:bg-[#05b34c] text-white shadow-lg shadow-[#06C755]/30 active:scale-95"}`}
-            >
-              {loading ? (
-                <Loader2 size={24} className="animate-spin md:w-7 md:h-7" />
-              ) : (
-                <>
-                  <MessageCircle
-                    size={24}
-                    className="fill-white md:w-7 md:h-7"
-                  />{" "}
-                  เข้าสู่ระบบด้วย LINE
-                </>
-              )}
-            </button>
-
-            <button
-              onClick={() => setIsEmailMode(true)}
-              disabled={loading}
-              className="cursor-pointer w-full max-w-[320px] md:max-w-[400px] font-bold md:text-lg py-4 md:py-5 rounded-[16px] md:rounded-[24px] flex items-center justify-center gap-3 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 active:scale-95 transition-all"
-            >
-              <Mail size={20} className="text-gray-500 md:w-6 md:h-6" />{" "}
-              เข้าสู่ระบบด้วยอีเมลสำรอง
-            </button>
-          </div>
-        )}
-
-        {isEmailMode && !showOtpInput && (
-          <form
-            onSubmit={handleSendOtp}
-            className="w-full max-w-[320px] md:max-w-[400px] flex flex-col gap-4 md:gap-5 animate-in fade-in slide-in-from-bottom-4 duration-300"
-          >
-            <div>
-              <input
-                type="email"
-                required
-                placeholder="กรอกอีเมลของคุณ"
-                value={emailInput}
-                onChange={(e) => setEmailInput(e.target.value)}
-                className="w-full px-4 md:px-6 py-4 md:py-5 bg-gray-50 border border-gray-200 rounded-[16px] md:rounded-[24px] focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 text-sm md:text-base font-medium"
-              />
-            </div>
-            <div className="flex gap-2 md:gap-3">
-              <button
-                type="button"
-                onClick={() => setIsEmailMode(false)}
-                className="p-4 md:p-5 bg-gray-100 rounded-[16px] md:rounded-[24px] text-gray-600 hover:bg-gray-200 transition-all active:scale-95 cursor-pointer"
-              >
-                <ArrowLeft size={20} className="md:w-6 md:h-6" />
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className={`flex-1 font-bold md:text-lg py-4 md:py-5 rounded-[16px] md:rounded-[24px] flex items-center justify-center gap-2 transition-all cursor-pointer ${loading ? "bg-blue-100 text-blue-400" : "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/30 active:scale-95"}`}
-              >
-                {loading ? (
-                  <Loader2 size={20} className="animate-spin md:w-6 md:h-6" />
-                ) : (
-                  "ส่งรหัส OTP"
-                )}
-              </button>
-            </div>
-          </form>
-        )}
-
-        {isEmailMode && showOtpInput && (
-          <form
-            onSubmit={handleVerifyOtp}
-            className="w-full max-w-[320px] md:max-w-[400px] flex flex-col gap-4 md:gap-5 animate-in fade-in slide-in-from-right-4 duration-300"
-          >
-            <div>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 md:pl-6 flex items-center pointer-events-none">
-                  <KeyRound size={20} className="text-gray-400 md:w-6 md:h-6" />
-                </div>
-                <input
-                  type="text"
-                  required
-                  maxLength={6}
-                  placeholder="รหัส OTP 6 หลัก"
-                  value={otpInput}
-                  onChange={(e) => setOtpInput(e.target.value)}
-                  className="w-full pl-12 md:pl-16 pr-4 md:pr-6 py-4 md:py-5 bg-gray-50 border border-gray-200 rounded-[16px] md:rounded-[24px] focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 text-lg md:text-xl font-bold tracking-[0.2em] text-center"
-                />
-              </div>
-              <p className="text-[10px] md:text-sm text-gray-400 text-center mt-2 md:mt-4">
-                รหัสผ่านถูกส่งไปยัง: {emailInput}
-              </p>
-            </div>
-            <div className="flex gap-2 md:gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowOtpInput(false);
-                  setOtpInput("");
-                  setStatusText("ระบบลงเวลาและจัดการวันลาสำหรับพนักงาน");
-                }}
-                className="p-4 md:p-5 bg-gray-100 rounded-[16px] md:rounded-[24px] text-gray-600 hover:bg-gray-200 transition-all active:scale-95 cursor-pointer"
-              >
-                <ArrowLeft size={20} className="md:w-6 md:h-6" />
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className={`flex-1 font-bold md:text-lg py-4 md:py-5 rounded-[16px] md:rounded-[24px] flex items-center justify-center gap-2 transition-all cursor-pointer ${loading ? "bg-blue-100 text-blue-400" : "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/30 active:scale-95"}`}
-              >
-                {loading ? (
-                  <Loader2 size={20} className="animate-spin md:w-6 md:h-6" />
-                ) : (
-                  "เข้าสู่ระบบ"
-                )}
-              </button>
-            </div>
-          </form>
-        )}
-      </div>
-
-      <div className="relative z-10 pb-8 md:pb-12 px-8 mt-auto shrink-0">
-        <p className="text-[11px] md:text-sm text-gray-400 text-center leading-relaxed">
-          การเข้าสู่ระบบถือว่ายอมรับเงื่อนไขการใช้งาน
-          <br />
-          และนโยบายความเป็นส่วนตัวของบริษัท
-        </p>
-      </div>
+    } catch (error) { toast.error(error instanceof Error ? error.message : 'เข้าสู่ระบบไม่สำเร็จ'); }
+    finally { setBusy(false); }
+  }
+  const input = 'w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 outline-none focus:border-blue-500';
+  return <div data-login-page className="app-page overflow-y-auto!">
+    <div className="relative shrink-0 overflow-hidden">
+    <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-1/2 w-[150%] -translate-x-1/2 rounded-b-[50%] bg-cover bg-center md:w-[120%]" style={{ backgroundImage: "url('/img/login-bg.jpg')" }}>
+      <div className="absolute inset-0 rounded-b-[50%] bg-white/30" />
     </div>
-  );
+    <div className="relative z-10 flex flex-1 flex-col items-center px-6 pt-10 pb-6">
+      <div className="mb-5 flex h-20 w-20 shrink-0 items-center justify-center rounded-3xl bg-white text-blue-600 shadow"><MapPinHouse size={44} /></div>
+      <h1 className="text-2xl font-bold text-gray-900">OFFICE SYSTEM</h1><p className="mt-2 text-center text-sm text-gray-500">ลงชื่อเข้าใช้เพื่อเริ่มงานของคุณ</p>
+    </div>
+    </div>
+    <div className="relative z-10 flex flex-col items-center px-6 pt-6 pb-10">
+      <div className="w-full max-w-sm space-y-4">
+        {setupError && <p role="alert" className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">{setupError}</p>}
+        {mode === 'password' ? <form onSubmit={submitPassword} className="space-y-4">
+          <div><label htmlFor="username" className="mb-2 block text-sm font-bold">ชื่อผู้ใช้</label><input id="username" name="username" autoComplete="username" autoCapitalize="none" spellCheck={false} required maxLength={64} value={username} onChange={event => setUsername(event.target.value)} className={input} /></div>
+          <div><label htmlFor="password" className="mb-2 block text-sm font-bold">รหัสผ่าน</label><div className="relative"><input id="password" name="password" type={visible ? 'text' : 'password'} autoComplete="current-password" required maxLength={128} value={password} onChange={event => setPassword(event.target.value)} className={`${input} pr-14`} /><button type="button" aria-label={visible ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'} onClick={() => setVisible(!visible)} className="absolute inset-y-0 right-1 w-12 flex items-center justify-center text-gray-500">{visible ? <EyeOff size={20} /> : <Eye size={20} />}</button></div></div>
+          <p className="text-xs leading-relaxed text-gray-500">พนักงานใช้ได้ 1 เครื่อง หากเปลี่ยนเครื่องให้ติดต่อผู้ดูแล · Admin ใช้ได้หลายเครื่อง</p>
+          <button disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 py-4 font-bold text-white disabled:opacity-50">{busy && <Loader2 className="animate-spin" size={20} />}เข้าสู่ระบบ</button>
+        </form> : <form onSubmit={submitEmail} className="space-y-4">
+          <label htmlFor="email" className="block text-sm font-bold">อีเมลสำรอง</label><input id="email" type="email" required autoComplete="email" disabled={otpSent} value={email} onChange={event => setEmail(event.target.value)} className={input} />
+          {otpSent && <><label htmlFor="otp" className="block text-sm font-bold">รหัส OTP</label><input id="otp" autoComplete="one-time-code" inputMode="numeric" required pattern="[0-9]{6,8}" maxLength={8} value={otp} onChange={event => setOtp(event.target.value)} className={input} /></>}
+          <button disabled={busy} className="w-full rounded-2xl bg-blue-600 py-4 font-bold text-white disabled:opacity-50">{busy ? 'กำลังดำเนินการ…' : otpSent ? 'ยืนยันและเข้าสู่ระบบ' : 'ส่ง OTP'}</button>
+          {otpSent && <button type="button" disabled={busy} onClick={() => { setOtpSent(false); setOtp(''); }} className="w-full py-2 text-sm text-gray-500">เปลี่ยนอีเมล</button>}
+        </form>}
+        {lineEnabled && <button onClick={loginLine} disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#06c755] py-4 font-bold text-white disabled:opacity-50"><MessageCircle size={22} />เข้าสู่ระบบด้วย LINE</button>}
+        <button disabled={busy} onClick={() => { setMode(mode === 'password' ? 'email' : 'password'); setOtp(''); }} className="w-full py-3 text-sm font-medium text-gray-600">{mode === 'password' ? 'เข้าสู่ระบบด้วยอีเมลสำรอง' : 'กลับไปใช้ชื่อผู้ใช้และรหัสผ่าน'}</button>
+      </div><p className="mt-8 text-center text-xs text-gray-400">ต้องการบัญชีหรือเปลี่ยนเครื่อง ติดต่อผู้ดูแลระบบ</p>
+    </div>
+  </div>;
 }

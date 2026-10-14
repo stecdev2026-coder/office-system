@@ -1,4 +1,5 @@
 "use client";
+import BackButton from "@/components/BackButton";
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -25,7 +26,7 @@ export default function LeaveRequestPage() {
   const supabase = createClient();
   const [employee, setEmployee] = useState<any>(null);
 
-  const isApprover = true;
+  const isApprover = employee?.role === "Admin";
   const [activeTab, setActiveTab] = useState<"request" | "approve">("request");
 
   const [leaveType, setLeaveType] = useState<"sick" | "personal" | "annual">("personal");
@@ -252,7 +253,7 @@ export default function LeaveRequestPage() {
   };
 
   return (
-    <div className="fixed inset-0 w-full max-w-md md:max-w-3xl lg:max-w-4xl mx-auto h-full bg-[#FAFAFA] flex flex-col overflow-hidden md:border-x md:border-gray-200 md:shadow-2xl">
+    <div className="app-page">
       <div
         className="pt-12 md:pt-16 pb-6 bg-cover bg-center relative overflow-hidden bg-blue-600 shrink-0"
         style={{ backgroundImage: `url('/img/bg-head.jpg')` }}
@@ -261,12 +262,7 @@ export default function LeaveRequestPage() {
         <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent"></div>
 
         <div className="px-6 md:px-10 flex items-center justify-between relative z-10 mb-6">
-          <button
-            onClick={() => router.push("/hr")}
-            className="cursor-pointer w-10 h-10 md:w-12 md:h-12 bg-white/20 backdrop-blur-md border border-white/30 rounded-full flex items-center justify-center text-white active:scale-95 transition-all shadow-sm"
-          >
-            <ChevronLeft size={24} className="md:w-6 md:h-6" />
-          </button>
+          <BackButton fallback="/hr" className="cursor-pointer w-10 h-10 md:w-12 md:h-12 bg-white/20 backdrop-blur-md border border-white/30 rounded-full flex items-center justify-center text-white active:scale-95 transition-all shadow-sm" />
           <h1 className="text-base md:text-lg font-bold text-white absolute left-1/2 -translate-x-1/2 drop-shadow-md">
             จัดการลางาน
           </h1>
