@@ -134,6 +134,18 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 /* All existing and future buttons use a pointer, including button-like controls. */
 button, [role="button"], input[type="button"], input[type="submit"], input[type="reset"], summary {cursor:pointer!important;}
 
+/* Shared data loader: login logo with a moving progress border. */
+[data-logo-loader-ring]{--loader-size:96px;--logo-size:64px;position:relative;display:grid;width:var(--loader-size);height:var(--loader-size);place-items:center;isolation:isolate;}
+[data-logo-loader-ring][data-size="sm"]{--loader-size:64px;--logo-size:42px;}
+[data-logo-loader-ring][data-size="lg"]{--loader-size:132px;--logo-size:84px;}
+[data-logo-loader-ring] img{z-index:2;width:var(--logo-size);height:var(--logo-size);border-radius:24%;object-fit:cover;box-shadow:0 8px 24px #1d4ed829;animation:logo-loader-breathe 1.8s ease-in-out infinite;}
+[data-logo-loader-track],[data-logo-loader-spinner]{position:absolute;inset:0;border-radius:50%;}
+[data-logo-loader-track]{border:4px solid #dfe5ee;}
+[data-logo-loader-spinner]{background:conic-gradient(from 0deg,transparent 0 58%,#2563eb 78%,#22c55e 100%);filter:drop-shadow(0 0 5px #2563eb66);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 5px),#000 calc(100% - 4px));mask:radial-gradient(farthest-side,transparent calc(100% - 5px),#000 calc(100% - 4px));animation:logo-loader-run 1.15s linear infinite;}
+@keyframes logo-loader-run{to{transform:rotate(1turn)}}
+@keyframes logo-loader-breathe{0%,100%{transform:scale(1)}50%{transform:scale(.94)}}
+@media(prefers-reduced-motion:reduce){[data-logo-loader-spinner]{animation-duration:3s}[data-logo-loader-ring] img{animation:none}}
+
 /* Quiet, shared employee home and attendance UI. */
 .staff-header {flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:20px 24px;background:#fff;border-bottom:1px solid #edf1f2;z-index:20;}
 .staff-header-back {justify-content:flex-start;}

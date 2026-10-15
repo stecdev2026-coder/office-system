@@ -4,6 +4,7 @@ import {Clock,MapPin,LocateFixed,CheckCircle2} from 'lucide-react';
 import BackButton from '@/components/BackButton';
 import AdminSelect from '@/components/ui/AdminSelect';
 import AttendanceCamera from '@/components/AttendanceCamera';
+import LogoLoader from '@/components/LogoLoader';
 import {toast} from 'sonner';
 type Position={latitude:number;longitude:number;accuracy:number;timestamp:number};
 export default function CheckInPage(){
@@ -23,7 +24,7 @@ export default function CheckInPage(){
  return <div className="app-page"><header className="staff-header staff-header-back gap-3"><BackButton fallback="/"/><div><h1 className="font-semibold text-lg">ลงเวลางาน</h1><p className="text-xs text-slate-500">เข้า–ออก และเช็คอินระหว่างวัน</p></div></header><main className="staff-content space-y-5">
  <section className="staff-card checkin-hero text-center"><span className="staff-eyebrow justify-center"><Clock size={17}/>{now.toLocaleDateString('th-TH',{timeZone:'Asia/Bangkok',dateStyle:'long'})}</span><time className="mt-3 block text-4xl font-bold tracking-tight text-emerald-700">{now.toLocaleTimeString('th-TH',{timeZone:'Asia/Bangkok',hour:'2-digit',minute:'2-digit',second:'2-digit'})}</time><h2 className="text-xl font-semibold mt-3">{complete?'ออกงานเรียบร้อย':open?'กำลังทำงาน':'พร้อมเริ่มวันทำงาน'}</h2><p className="text-sm text-slate-600 mt-2">{complete?'ตรวจสอบรายการลงเวลาด้านล่างได้เลย':'บันทึกตำแหน่งปัจจุบันของคุณในสถานที่ที่ได้รับสิทธิ์'}</p></section>
  {error&&<p role="alert" className="text-rose-700">{error}<button onClick={load} className="ml-3 underline">ลองใหม่</button></p>}
- {!data&&!error&&<p role="status">กำลังโหลดสถานที่…</p>}
+ {!data&&!error&&<LogoLoader text="กำลังโหลดสถานที่…" size="md" className="py-12"/>}
  {data&&!complete&&<section className="staff-card attendance-form-card space-y-5"><div><label htmlFor="attendance-location" className="block font-semibold mb-2">สถานที่ลงเวลา</label><AdminSelect id="attendance-location" disabled={busy} value={locationId} onChange={e=>I(e.target.value)}><option value="">เลือกสถานที่</option>{data.locations.map((l:any)=><option key={l.id} value={l.id}>{l.name}</option>)}</AdminSelect>{!data.locations.length&&<p className="text-sm text-amber-700 mt-2">ยังไม่มีสถานที่ที่ได้รับสิทธิ์ กรุณาติดต่อแอดมิน</p>}</div>
  <div className="rounded-2xl border border-blue-200 bg-blue-100 p-4"><div className="flex gap-3"><MapPin size={20} className="text-blue-600 shrink-0"/><div><b className="text-sm">ตำแหน่งปัจจุบัน</b><p className="text-xs text-slate-600 mt-1">{locating?'กำลังระบุตำแหน่ง…':gps?`ความคลาดเคลื่อนประมาณ ${Math.round(gps.accuracy)} เมตร`:'กดเช็คความคลาดเคลื่อนก่อนเริ่มลงเวลา'}</p>{gpsError&&<p role="alert" className="text-sm text-rose-700 mt-2">{gpsError}</p>}</div></div><button disabled={busy||locating} onClick={locate} className="staff-secondary w-full mt-3"><LocateFixed size={17}/>{locating?'กำลังค้นหา…':'เช็คความคลาดเคลื่อน'}</button><p className="text-xs text-slate-600 mt-3">คลิกเพื่อเช็คสถานะการเปิดตำแหน่งบนอุปกรณ์</p></div>
  {data.photoRequired&&<AttendanceCamera key={captureKey} onCapture={P} disabled={busy}/>}

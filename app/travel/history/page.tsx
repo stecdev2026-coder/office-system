@@ -1,5 +1,6 @@
 "use client";
 import BackButton from "@/components/BackButton";
+import LogoLoader from "@/components/LogoLoader";
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -8,7 +9,6 @@ import {
   Map,
   Calendar,
   MapPin,
-  Loader2,
   Navigation,
   X,
   Route,
@@ -250,15 +250,7 @@ export default function TravelHistoryPage() {
               </h4>
               
               {loadingDetails ? (
-                <div className="flex flex-col items-center justify-center py-10 gap-2">
-                  <Loader2
-                    size={24}
-                    className="animate-spin text-blue-500 md:w-8 md:h-8"
-                  />
-                  <p className="text-xs md:text-sm text-gray-500">
-                    กำลังโหลดเส้นทาง...
-                  </p>
-                </div>
+                <LogoLoader text="กำลังโหลดเส้นทาง…" size="sm" className="py-10"/>
               ) : (
                 <div className="relative border-l-2 border-dashed border-gray-200 ml-3 md:ml-4 space-y-7 md:space-y-8 pb-4">
                   {checkpoints.map((pt) => {
@@ -388,15 +380,7 @@ export default function TravelHistoryPage() {
       {/* ส่วนรายการเดินทาง */}
       <div className="flex-1 overflow-y-auto custom-scrollbar px-6 md:px-10 pt-2 pb-4">
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-20 md:py-32 gap-3 md:gap-4">
-            <Loader2
-              size={32}
-              className="animate-spin text-blue-500 md:w-10 md:h-10"
-            />
-            <p className="text-sm md:text-base text-gray-500 font-medium">
-              กำลังค้นหาประวัติ...
-            </p>
-          </div>
+          <LogoLoader text="กำลังค้นหาประวัติ…" size="md" className="py-20 md:py-32"/>
         ) : trips.length === 0 ? (
           <div className="bg-white rounded-3xl p-10 md:p-16 text-center shadow-sm border border-gray-100 flex flex-col items-center">
             <div className="w-16 h-16 md:w-20 md:h-20 bg-gray-50 rounded-full flex items-center justify-center text-gray-300 mb-4 md:mb-6">

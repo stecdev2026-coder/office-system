@@ -1,1 +1,2 @@
-export default function Loading(){return <div data-admin-loading className="flex items-center justify-center gap-3 text-gray-500"><span className="h-5 w-5 animate-spin rounded-full border-2 border-gray-200 border-t-[#2563eb]"/><p role="status">กำลังโหลดระบบหลังบ้าน…</p></div>;}
+import LogoLoader from '@/components/LogoLoader';
+export default function Loading(){return <div data-admin-loading className="flex items-center justify-center"><LogoLoader text="กำลังโหลดระบบหลังบ้าน…" size="lg"/></div>;}

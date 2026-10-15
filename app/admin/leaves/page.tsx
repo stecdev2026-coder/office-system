@@ -1,6 +1,7 @@
 "use client";
 
 import {usePermissions} from '@/components/Permissions';
+import LogoLoader from '@/components/LogoLoader';
 import React, { useState, useEffect } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
@@ -13,8 +14,7 @@ import {
   CheckCircle2, 
   XCircle,
   CalendarRange,
-  Filter,
-  Loader2
+  Filter
 } from "lucide-react";
 
 export default function LeaveRequestsPage() {
@@ -181,10 +181,7 @@ export default function LeaveRequestsPage() {
               {loading ? (
                 <tr key="loading-row">
                   <td colSpan={6} className="px-6 py-12 text-center text-gray-400">
-                    <div className="flex flex-col items-center justify-center gap-2">
-                      <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-                      <p className="text-sm font-medium">กำลังโหลดข้อมูลการลา...</p>
-                    </div>
+                    <LogoLoader text="กำลังโหลดข้อมูลการลา…" size="sm" />
                   </td>
                 </tr>
               ) : filteredLeaves.length === 0 ? (

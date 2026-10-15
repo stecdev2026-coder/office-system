@@ -1,5 +1,4 @@
-import React from "react";
-import { Loader2 } from "lucide-react";
+import LogoLoader from "@/components/LogoLoader";
 
 interface LoadingScreenProps {
   text?: string;
@@ -16,14 +15,8 @@ export default function LoadingScreen({
         {/* พื้นหลังโค้งตกแต่งด้านบน */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[150%] h-[35%] bg-gradient-to-b from-blue-50 to-transparent rounded-b-[50%] pointer-events-none opacity-60"></div>
 
-        {/* 🌟 3. เนื้อหาโหลดดิ้งตรงกลาง */}
         <div className="relative z-10 flex flex-col items-center">
-          {/* กล่องไอคอนพร้อมลูกเล่นเรืองแสง (Pulse glow) */}
-          <div className="relative mb-6 flex items-center justify-center">
-            <div className="absolute inset-0 rounded-full blur-xl bg-blue-500/40 animate-pulse"></div>
-            <Loader2 size={40} className="text-blue-600 animate-spin" />
-          </div>
-
+          <LogoLoader text="" size="lg" className="mb-6"/>
           <h2 className="text-lg font-bold text-gray-800 mb-2">{text}</h2>
           <p className="text-xs text-gray-400 font-medium animate-pulse tracking-wide">
             OFFICE SYSTEM

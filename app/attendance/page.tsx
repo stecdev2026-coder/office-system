@@ -1,10 +1,11 @@
 "use client";
 import BackButton from "@/components/BackButton";
+import LogoLoader from "@/components/LogoLoader";
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
-  ChevronLeft, Calendar, Loader2, Filter, ChevronRight, 
+  ChevronLeft, Calendar, Filter, ChevronRight,
   CheckCircle2, AlertCircle, LogIn, LogOut, MapPin, X,
   Clock
 } from 'lucide-react';
@@ -181,7 +182,7 @@ export default function AttendancePage() {
       {/* History List */}
       <div className="flex-1 overflow-y-auto custom-scrollbar px-6 md:px-10 pt-2 pb-4">
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-20 md:py-32 gap-3 md:gap-4"><Loader2 size={32} className="animate-spin text-blue-500 md:w-10 md:h-10" /><p className="text-sm md:text-base text-gray-500 font-medium">กำลังโหลดประวัติ...</p></div>
+          <LogoLoader text="กำลังโหลดประวัติ…" size="md" className="py-20 md:py-32"/>
         ) : history.length === 0 ? (
           <div className="bg-white rounded-3xl p-10 md:p-16 text-center shadow-sm border border-gray-100 flex flex-col items-center">
             <div className="w-16 h-16 md:w-20 md:h-20 bg-gray-50 rounded-full flex items-center justify-center text-gray-300 mb-4 md:mb-6"><Filter size={32} className="md:w-10 md:h-10" /></div>
