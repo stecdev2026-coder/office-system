@@ -27,7 +27,7 @@ export default function HomePage(){
    {started&&!finished&&<p className="text-xs text-slate-500 mt-3 flex items-center gap-2"><MapPin size={14}/>เพิ่มเช็คอินได้หลายครั้ง ก่อนลงเวลาออกงาน</p>}
   </section>
   <h2 className="text-sm font-semibold text-slate-500">บริการสำหรับคุณ</h2>
-  <div className="staff-card divide-y divide-slate-100 p-0">
+  <div className="staff-card staff-service-card divide-y divide-blue-100 p-0">
    {[{href:'/hr',icon:CalendarDays,title:'การลาและวันหยุด',detail:'โควต้า ยื่นคำขอ และประวัติการลา'},{href:'/attendance',icon:Clock,title:'ประวัติลงเวลา',detail:'ตรวจสอบการเข้า–ออกงานของคุณ'},{href:'/travel',icon:CarFront,title:trip?'เดินทางที่กำลังบันทึก':'บันทึกการเดินทาง',detail:trip?.purpose||'เริ่มเดินทางและดูรายการที่ผ่านมา'}].map(item=><Link className="staff-menu-row" href={item.href} key={item.href}><span className="staff-menu-icon"><item.icon size={22}/></span><span className="flex-1"><b className="block font-semibold">{item.title}</b><small className="text-slate-500">{item.detail}</small></span><ChevronRight size={18} className="text-slate-400"/></Link>)}
   </div>
  </main></div>;

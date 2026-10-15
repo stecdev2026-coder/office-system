@@ -1,146 +1,37 @@
 "use client";
 
-import React, { useState } from "react";
-import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import {useMemo,useState} from "react";
+import {CalendarPlus,ChevronLeft,ChevronRight,Clock,Loader2} from "lucide-react";
 
-interface CalendarViewProps {
-  events: any[];
-  isLoading: boolean;
-  onDateClick: (dateStr: string) => void;
-  onEventClick: (event: any) => void;
-}
+interface CalendarViewProps {events:any[];isLoading:boolean;onDateClick:(dateStr:string)=>void;onEventClick:(event:any)=>void;}
+const pad=(value:number)=>String(value).padStart(2,"0");
+const localDate=(date=new Date())=>`${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`;
+const includesDate=(event:any,date:string)=>event.event_date<=date&&(event.end_date||event.event_date)>=date;
 
-export default function CalendarView({ events, isLoading, onDateClick, onEventClick }: CalendarViewProps) {
-  const [currentDate, setCurrentDate] = useState(new Date());
-
-  const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
-  const getFirstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
-
-  const year = currentDate.getFullYear();
-  const month = currentDate.getMonth();
-  const daysInMonth = getDaysInMonth(year, month);
-  const firstDay = getFirstDayOfMonth(year, month);
-
-  const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
-  const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
-
-  const monthNames = [
-    "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
-    "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
-  ];
-  const dayNames = ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"];
-
-  const days = [];
-  for (let i = 0; i < firstDay; i++) {
-    days.push(<div key={`empty-${i}`} className="h-24 md:h-32 border border-gray-100 bg-gray-50/50 rounded-xl"></div>);
-  }
-
-  // หาวันที่ปัจจุบัน (รูปแบบ YYYY-MM-DD)
-  const todayDate = new Date();
-  todayDate.setMinutes(todayDate.getMinutes() - todayDate.getTimezoneOffset());
-  const todayString = todayDate.toISOString().split("T")[0];
-
-  for (let d = 1; d <= daysInMonth; d++) {
-    const currentDayString = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-    const dayEvents = events.filter(evt => evt.event_date === currentDayString);
-    
-    const isToday = todayString === currentDayString;
-    // 🌟 เช็คว่าเป็นอดีตหรือไม่ (ถ้าน้อยกว่าวันปัจจุบันคืออดีต)
-    const isPast = currentDayString < todayString;
-
-    // 🌟 กำหนดคลาสสำหรับช่องวันที่ตามสถานะ
-    let dayClass = "h-24 md:h-32 border p-1 md:p-2 flex flex-col gap-1 overflow-y-auto transition-all rounded-xl ";
-    
-    if (isPast) {
-      // วันที่ผ่านมาแล้ว: พื้นเทาจางๆ และเปลี่ยน Cursor 
-      dayClass += "border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed";
-    } else if (isToday) {
-      // วันนี้: เน้นสีฟ้า
-      dayClass += "border-blue-400 bg-blue-50/30 cursor-pointer hover:border-blue-300 hover:shadow-md";
-    } else {
-      // วันในอนาคต: พื้นขาวปกติ
-      dayClass += "border-gray-200 bg-white cursor-pointer hover:border-blue-300 hover:shadow-md";
-    }
-
-    days.push(
-      <div 
-        key={d} 
-        // 🌟 ดักไว้ว่าถ้าไม่ใช่อดีต ถึงจะอนุญาตให้คลิกเพิ่มงานได้
-        onClick={() => {
-          if (!isPast) onDateClick(currentDayString);
-        }}
-        className={dayClass}
-      >
-        <div className="flex justify-between items-center px-1 mb-1">
-          <span className={`text-xs md:text-sm font-bold ${isToday ? "text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full" : "text-gray-600"}`}>
-            {d}
-          </span>
-        </div>
-        
-        <div className="flex flex-col gap-1">
-          {dayEvents.map((evt) => {
-            let colorClass = "bg-gray-100 text-gray-700 border-gray-200";
-            if (evt.event_type === "meeting") colorClass = "bg-blue-100 text-blue-700 border-blue-200";
-            if (evt.event_type === "holiday") colorClass = "bg-red-100 text-red-700 border-red-200";
-            if (evt.event_type === "general") colorClass = "bg-green-100 text-green-700 border-green-200";
-
-            return (
-              <div 
-                key={evt.id} 
-                onClick={(e) => {
-                  // 🌟 ตัว e.stopPropagation() ทำให้สามารถคลิกดูอีเวนต์ในวันอดีตได้ โดยไม่โดนบล็อก
-                  e.stopPropagation();
-                  onEventClick(evt);
-                }}
-                className={`text-[10px] md:text-xs truncate px-1.5 py-1 rounded cursor-pointer transition-colors border ${colorClass} hover:opacity-80`}
-                title={evt.title}
-              >
-                {evt.start_time && <span className="font-semibold mr-1">{evt.start_time.substring(0, 5)}</span>}
-                {evt.title}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="bg-white p-4 md:p-6 rounded-[24px] shadow-sm border border-gray-100 flex flex-col items-center">
-      {/* Controls เปลี่ยนเดือน */}
-      <div className="flex items-center justify-between w-full mb-5 bg-gray-50 p-2 md:p-3 rounded-2xl border border-gray-100">
-        <button onClick={prevMonth} className="p-2 md:p-3 hover:bg-white rounded-xl transition-colors border border-transparent hover:border-gray-200 hover:shadow-sm cursor-pointer">
-          <ChevronLeft size={20} className="text-gray-600" />
-        </button>
-        <h2 className="text-base md:text-xl font-black text-blue-700">
-          {monthNames[month]} {year + 543}
-        </h2>
-        <button onClick={nextMonth} className="p-2 md:p-3 hover:bg-white rounded-xl transition-colors border border-transparent hover:border-gray-200 hover:shadow-sm cursor-pointer">
-          <ChevronRight size={20} className="text-gray-600" />
-        </button>
-      </div>
-
-      {isLoading ? (
-        <div className="flex flex-col items-center justify-center py-20 gap-3 w-full">
-          <Loader2 size={32} className="animate-spin text-blue-500" />
-          <p className="text-sm text-gray-500 font-medium">กำลังโหลดปฏิทิน...</p>
-        </div>
-      ) : (
-        <div className="w-full">
-          {/* หัวตาราง วัน จ-อา */}
-          <div className="grid grid-cols-7 gap-1 md:gap-2 mb-2">
-            {dayNames.map(day => (
-              <div key={day} className="text-center text-xs md:text-sm font-bold text-gray-400 py-1">
-                {day}
-              </div>
-            ))}
-          </div>
-          {/* ตารางวันที่ */}
-          <div className="grid grid-cols-7 gap-1 md:gap-2">
-            {days}
-          </div>
-        </div>
-      )}
-    </div>
-  );
+export default function CalendarView({events,isLoading,onDateClick,onEventClick}:CalendarViewProps){
+ const today=localDate(),[currentDate,setCurrentDate]=useState(()=>new Date()),[selectedDate,setSelectedDate]=useState(today);
+ const year=currentDate.getFullYear(),month=currentDate.getMonth(),daysInMonth=new Date(year,month+1,0).getDate(),firstDay=new Date(year,month,1).getDay();
+ const monthNames=["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"],dayNames=["อา","จ","อ","พ","พฤ","ศ","ส"];
+ const selectedEvents=useMemo(()=>events.filter(event=>includesDate(event,selectedDate)).sort((a,b)=>(a.start_time||"").localeCompare(b.start_time||"")),[events,selectedDate]);
+ const move=(delta:number)=>{const next=new Date(year,month+delta,1);setCurrentDate(next);setSelectedDate(`${next.getFullYear()}-${pad(next.getMonth()+1)}-01`);};
+ const cells=[];
+ for(let i=0;i<firstDay;i++)cells.push(<div key={`empty-${i}`} aria-hidden="true" className="aspect-square rounded-xl bg-slate-50/70"/>);
+ for(let day=1;day<=daysInMonth;day++){
+  const date=`${year}-${pad(month+1)}-${pad(day)}`,dayEvents=events.filter(event=>includesDate(event,date)),isToday=date===today,isSelected=date===selectedDate;
+  cells.push(<button type="button" key={date} onClick={()=>setSelectedDate(date)} aria-label={`เลือกวันที่ ${day} มี ${dayEvents.length} รายการ`} className={`aspect-square min-w-0 rounded-xl border p-1.5 transition ${isSelected?'border-blue-600 bg-blue-50 ring-2 ring-blue-100':isToday?'border-blue-300 bg-blue-50/50':'border-slate-200 bg-white hover:border-blue-300'}`}>
+   <span className={`mx-auto flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${isToday?'bg-blue-600 text-white':'text-slate-700'}`}>{day}</span>
+   <span className="mt-1 flex min-h-2 items-center justify-center gap-1" aria-hidden="true">{dayEvents.slice(0,3).map((event,index)=><i key={`${event.id}-${index}`} className={`h-1.5 w-1.5 rounded-full ${event.event_type==='holiday'?'bg-rose-400':event.event_type==='meeting'?'bg-blue-500':'bg-emerald-400'}`}/>)}</span>
+   {dayEvents.length>3&&<span className="block text-[9px] text-slate-500">+{dayEvents.length-3}</span>}
+  </button>);
+ }
+ const selectedLabel=new Date(`${selectedDate}T00:00:00`).toLocaleDateString('th-TH',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+ return <div className="rounded-[24px] border border-blue-100 bg-gradient-to-br from-white to-blue-50/40 p-4 shadow-sm md:p-6">
+  <div className="mb-5 flex items-center justify-between rounded-2xl border border-blue-100 bg-blue-50/70 p-2 md:p-3"><button type="button" onClick={()=>move(-1)} aria-label="เดือนก่อนหน้า" className="rounded-xl border border-transparent p-2 text-blue-700 hover:border-blue-100 hover:bg-white md:p-3"><ChevronLeft size={20}/></button><h2 className="text-base font-black text-blue-700 md:text-xl">{monthNames[month]} {year+543}</h2><button type="button" onClick={()=>move(1)} aria-label="เดือนถัดไป" className="rounded-xl border border-transparent p-2 text-blue-700 hover:border-blue-100 hover:bg-white md:p-3"><ChevronRight size={20}/></button></div>
+  {isLoading?<div className="flex flex-col items-center justify-center gap-3 py-20"><Loader2 size={32} className="animate-spin text-blue-500"/><p className="text-sm font-medium text-slate-500">กำลังโหลดปฏิทิน...</p></div>:<>
+   <div className="grid grid-cols-7 gap-1.5 md:gap-2">{dayNames.map(day=><div key={day} className="py-1 text-center text-xs font-bold text-slate-400 md:text-sm">{day}</div>)}{cells}</div>
+   <section className="mt-6 border-t border-blue-100 pt-5" aria-label={`รายการวันที่ ${selectedLabel}`}><div className="mb-4 flex items-center justify-between gap-3"><div><p className="text-xs font-semibold text-blue-600">รายการของวันที่เลือก</p><h3 className="mt-1 font-bold text-slate-900">{selectedLabel}</h3></div>{selectedDate>=today&&<button type="button" onClick={()=>onDateClick(selectedDate)} className="flex shrink-0 items-center gap-2 rounded-xl bg-blue-600 px-3 py-2 text-sm font-bold text-white hover:bg-blue-700"><CalendarPlus size={17}/>เพิ่มนัดหมาย</button>}</div>
+    <div className="space-y-2">{selectedEvents.map(event=><button type="button" key={event.id} onClick={()=>onEventClick(event)} className="flex w-full items-center gap-3 rounded-2xl border border-blue-100 bg-white p-4 text-left hover:border-blue-300"><span className={`h-3 w-3 shrink-0 rounded-full ${event.event_type==='holiday'?'bg-rose-400':event.event_type==='meeting'?'bg-blue-500':'bg-emerald-400'}`}/><span className="min-w-0 flex-1"><b className="block truncate text-sm text-slate-900">{event.title}</b><small className="mt-1 flex items-center gap-1 text-slate-500">{event.start_time?<><Clock size={13}/>{event.start_time.slice(0,5)}{event.end_time?`–${event.end_time.slice(0,5)}`:''} น.</>:'ตลอดวัน'}</small></span><ChevronRight size={18} className="text-slate-400"/></button>)}{!selectedEvents.length&&<div className="rounded-2xl border border-dashed border-blue-200 bg-white/70 px-4 py-8 text-center text-sm text-slate-400">วันนี้ยังไม่มีรายการ</div>}</div>
+   </section>
+  </>}
+ </div>;
 }

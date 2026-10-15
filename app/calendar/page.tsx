@@ -4,14 +4,12 @@ import BackButton from "@/components/BackButton";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { 
-  ChevronLeft, 
   CalendarDays, 
   Clock, 
   X, 
   Loader2, 
   Calendar as CalendarIcon, 
-  AlignLeft, 
-  Tag 
+  AlignLeft
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
@@ -32,6 +30,7 @@ export default function CalendarPage() {
   // State สำหรับ Modal เพิ่มนัดหมาย (Add)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 🌟 State สำหรับ Modal ดูข้อมูล (View)
@@ -85,6 +84,7 @@ export default function CalendarPage() {
   const openAddModal = (dateStr: string) => {
     resetForm();
     setSelectedDate(dateStr);
+    setEndDate(dateStr);
     setIsAddModalOpen(true);
   };
 
@@ -97,6 +97,7 @@ export default function CalendarPage() {
   const handleAddEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!employee) return toast.error("ไม่พบข้อมูลผู้ใช้งาน");
+    if (endDate < selectedDate) return toast.error("วันสิ้นสุดต้องไม่อยู่ก่อนวันเริ่มต้น");
     setIsSubmitting(true);
 
     try {
@@ -105,6 +106,7 @@ export default function CalendarPage() {
         title: title,
         description: description || null,
         event_date: selectedDate,
+        end_date: endDate,
         start_time: startTime || null,
         end_time: endTime || null,
         event_type: eventType
@@ -188,7 +190,7 @@ export default function CalendarPage() {
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 font-bold mb-0.5">วันที่จัดงาน</p>
-                    <p className="text-sm md:text-base font-bold text-gray-900">{formatThaiDate(selectedEvent.event_date)}</p>
+                    <p className="text-sm md:text-base font-bold text-gray-900">{formatThaiDate(selectedEvent.event_date)}{selectedEvent.end_date&&selectedEvent.end_date!==selectedEvent.event_date?` – ${formatThaiDate(selectedEvent.end_date)}`:''}</p>
                   </div>
                 </div>
 
@@ -246,9 +248,9 @@ export default function CalendarPage() {
             </div>
             
             <form onSubmit={handleAddEvent} className="p-5 md:p-6 overflow-y-auto max-h-[70vh] custom-scrollbar">
-              <div className="mb-4">
-                <label className="text-xs font-bold text-gray-500 mb-1.5 block">วันที่จัดงาน</label>
-                <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} required className="w-full text-sm font-medium bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 focus:outline-none focus:border-blue-500" />
+              <div className="grid grid-cols-1 gap-4 mb-4 sm:grid-cols-2">
+                <div><label className="text-xs font-bold text-gray-500 mb-1.5 block">วันเริ่มต้น</label><input type="date" value={selectedDate} onChange={(e) => {setSelectedDate(e.target.value);if(!endDate||endDate<e.target.value)setEndDate(e.target.value);}} required className="w-full text-sm font-medium bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 focus:outline-none focus:border-blue-500" /></div>
+                <div><label className="text-xs font-bold text-gray-500 mb-1.5 block">วันสิ้นสุด</label><input type="date" min={selectedDate} value={endDate} onChange={(e) => setEndDate(e.target.value)} required className="w-full text-sm font-medium bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 focus:outline-none focus:border-blue-500" /></div>
               </div>
               <div className="mb-4">
                 <label className="text-xs font-bold text-gray-500 mb-1.5 block">หัวข้อ/ชื่องาน</label>

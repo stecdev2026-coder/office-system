@@ -25,8 +25,8 @@ create table if not exists public.travel_checkpoints (
  lat double precision,lng double precision,location_name text,note text,created_at timestamptz not null default now(),unique(trip_id,sequence)
 );
 create table if not exists public.calendar_events (
- id uuid primary key default gen_random_uuid(),line_user_id text references employees(line_user_id),title text not null,description text,event_date date not null,
- start_time time,end_time time,event_type text,created_at timestamptz not null default now()
+ id uuid primary key default gen_random_uuid(),line_user_id text references employees(line_user_id),title text not null,description text,event_date date not null,end_date date,
+ start_time time,end_time time,event_type text,created_at timestamptz not null default now(),check(end_date is null or end_date>=event_date)
 );
 create table if not exists public.notifications (
  id uuid primary key default gen_random_uuid(),line_user_id text not null references employees(line_user_id),type text,title text,message text,reference_id uuid,

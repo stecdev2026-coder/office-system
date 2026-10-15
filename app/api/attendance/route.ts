@@ -1,6 +1,8 @@
 import {permissionsFor} from '@/lib/permissions/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { AuthError, checkOrigin, currentSession, database, failure } from '@/lib/auth/server';
+function distanceInKm(lat1:number,lon1:number,lat2:number,lon2:number){const rad=(value:number)=>value*Math.PI/180,dLat=rad(lat2-lat1),dLon=rad(lon2-lon1),a=Math.sin(dLat/2)**2+Math.cos(rad(lat1))*Math.cos(rad(lat2))*Math.sin(dLon/2)**2;return 6371*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));}
+function formatDistance(value:number){return value.toLocaleString('th-TH',{minimumFractionDigits:value<10?2:1,maximumFractionDigits:value<10?2:1});}
 export async function GET() {
  try {
   const {employee}=await currentSession(); const db=database();
@@ -30,8 +32,10 @@ export async function POST(request:NextRequest){
    const path=b.photoUrl.slice('/api/photos?path='.length); const file=await database().storage.from('attendance_photos').download(path);
    if(file.error)throw new AuthError('ไม่พบรูปยืนยัน');
   }
-  const {data,error}=await database().rpc('office_record_attendance',{p_employee_id:employee.id,p_location_id:b.locationId,p_kind:b.kind,p_lat:b.latitude,p_lng:b.longitude,p_photo:b.photoUrl||null});
-  if(error){const messages:Record<string,string>={OUTSIDE_RADIUS:'อยู่นอกรัศมีสถานที่ที่อนุญาต',LOCATION_DENIED:'ไม่ได้รับสิทธิ์ลงเวลาที่สถานที่นี้',PHOTO_REQUIRED:'กรุณาถ่ายรูปก่อนลงเวลา',ALREADY_STARTED:'ลงเวลาเข้างานแล้ว',NO_OPEN_ATTENDANCE:'ยังไม่เข้างาน หรือออกงานแล้ว',INVALID_INPUT:'พิกัดไม่ถูกต้อง'};throw new AuthError(Object.entries(messages).find(([key])=>error.message.includes(key))?.[1]||'บันทึกลงเวลาไม่สำเร็จ',409);}
+  const db=database(),location=await db.from('attendance_locations').select('latitude,longitude').eq('id',b.locationId).maybeSingle();
+  const distance=location.data?distanceInKm(b.latitude,b.longitude,Number(location.data.latitude),Number(location.data.longitude)):null;
+  const {data,error}=await db.rpc('office_record_attendance',{p_employee_id:employee.id,p_location_id:b.locationId,p_kind:b.kind,p_lat:b.latitude,p_lng:b.longitude,p_photo:b.photoUrl||null});
+  if(error){const outside=distance===null?'ไม่สามารถลงชื่อเข้างานได้ เนื่องจากอยู่นอกพื้นที่ทำงาน':`ไม่สามารถลงชื่อเข้างานได้ เนื่องจากห่างจากสถานที่ทำงาน ${formatDistance(distance)} กม.`;const messages:Record<string,string>={OUTSIDE_RADIUS:outside,LOCATION_DENIED:'ไม่ได้รับสิทธิ์ลงเวลาที่สถานที่นี้',PHOTO_REQUIRED:'กรุณาถ่ายรูปก่อนลงเวลา',ALREADY_STARTED:'ลงเวลาเข้างานแล้ว',NO_OPEN_ATTENDANCE:'ยังไม่เข้างาน หรือออกงานแล้ว',INVALID_INPUT:'พิกัดไม่ถูกต้อง'};throw new AuthError(Object.entries(messages).find(([key])=>error.message.includes(key))?.[1]||'บันทึกลงเวลาไม่สำเร็จ',409);}
   return NextResponse.json({id:data});
  }catch(e){return failure(e);}
 }
