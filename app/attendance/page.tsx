@@ -246,7 +246,7 @@ export default function AttendancePage() {
 
       {/* Pagination Controls */}
       {!isLoading && history.length > 0 && totalPages > 1 && (
-        <div className="px-6 md:px-10 pt-3 pb-6 shrink-0 bg-[#FAFAFA] flex justify-center border-t border-gray-100">
+        <div className="px-6 md:px-10 pt-3 pb-6 shrink-0 bg-[#fbf9fd] flex justify-center border-t border-gray-100">
           <div className="flex items-center gap-3 md:gap-4">
             <button 
               onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
