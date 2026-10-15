@@ -134,17 +134,17 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 /* All existing and future buttons use a pointer, including button-like controls. */
 button, [role="button"], input[type="button"], input[type="submit"], input[type="reset"], summary {cursor:pointer!important;}
 
-/* Shared data loader: login logo with a moving progress border. */
-[data-logo-loader-ring]{--loader-size:96px;--logo-size:64px;position:relative;display:grid;width:var(--loader-size);height:var(--loader-size);place-items:center;isolation:isolate;}
-[data-logo-loader-ring][data-size="sm"]{--loader-size:64px;--logo-size:42px;}
-[data-logo-loader-ring][data-size="lg"]{--loader-size:132px;--logo-size:84px;}
-[data-logo-loader-ring] img{z-index:2;width:var(--logo-size);height:var(--logo-size);border-radius:24%;object-fit:cover;box-shadow:0 8px 24px #1d4ed829;animation:logo-loader-breathe 1.8s ease-in-out infinite;}
-[data-logo-loader-track],[data-logo-loader-spinner]{position:absolute;inset:0;border-radius:50%;}
-[data-logo-loader-track]{border:4px solid #dfe5ee;}
-[data-logo-loader-spinner]{background:conic-gradient(from 0deg,transparent 0 58%,#2563eb 78%,#22c55e 100%);filter:drop-shadow(0 0 5px #2563eb66);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 5px),#000 calc(100% - 4px));mask:radial-gradient(farthest-side,transparent calc(100% - 5px),#000 calc(100% - 4px));animation:logo-loader-run 1.15s linear infinite;}
-@keyframes logo-loader-run{to{transform:rotate(1turn)}}
-@keyframes logo-loader-breathe{0%,100%{transform:scale(1)}50%{transform:scale(.94)}}
-@media(prefers-reduced-motion:reduce){[data-logo-loader-spinner]{animation-duration:3s}[data-logo-loader-ring] img{animation:none}}
+/* Shared data loader: the progress border follows the rounded-square login logo. */
+[data-logo-loader-ring]{--logo-size:64px;--loader-progress:0deg;position:relative;display:grid;width:var(--logo-size);height:var(--logo-size);place-items:center;isolation:isolate;}
+[data-logo-loader-ring][data-size="sm"]{--logo-size:42px;}
+[data-logo-loader-ring][data-size="lg"]{--logo-size:84px;}
+[data-logo-loader-ring] img{z-index:2;width:100%;height:100%;border-radius:24%;object-fit:cover;box-shadow:0 8px 24px #1d4ed829;}
+[data-logo-loader-track],[data-logo-loader-spinner]{position:absolute;inset:-3px;border-radius:calc(24% + 3px);pointer-events:none;}
+[data-logo-loader-track]{border:3px solid #dfe5ee;}
+[data-logo-loader-spinner]{padding:3px;background:conic-gradient(from -90deg,#2563eb 0deg,#0ea5e9,#22c55e var(--loader-progress),transparent var(--loader-progress));filter:drop-shadow(0 0 4px #2563eb70);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);mask-composite:exclude;}
+[data-logo-loader-label]{min-width:4ch;font-variant-numeric:tabular-nums;}
+[data-logo-loader-label] strong{color:#2563eb;font-weight:700;}
+@media(prefers-reduced-motion:reduce){[data-logo-loader-spinner]{filter:none}}
 
 /* Quiet, shared employee home and attendance UI. */
 .staff-header {flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:20px 24px;background:#fff;border-bottom:1px solid #edf1f2;z-index:20;}
