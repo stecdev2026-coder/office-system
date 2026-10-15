@@ -1,5 +1,3 @@
-import LogoLoader from "@/components/LogoLoader";
-
 interface LoadingScreenProps {
   text?: string;
 }
@@ -10,13 +8,9 @@ export default function LoadingScreen({
   return (
     <div data-loading-screen className="fixed inset-0 z-50 flex items-center justify-center bg-[#ece8f4] sm:p-4">
       <div data-loading-panel className="relative flex h-full w-full max-w-md flex-col items-center justify-center overflow-hidden bg-[#faf8fc] sm:h-[calc(100dvh-2rem)] sm:rounded-[40px] sm:shadow-2xl">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[150%] h-[35%] bg-gradient-to-b from-blue-50 to-transparent rounded-b-[50%] pointer-events-none opacity-60"></div>
-
-        <div className="relative z-10 flex flex-col items-center gap-4">
-          <LogoLoader text={text} size="lg"/>
-          <p className="text-sm font-medium tracking-wide text-slate-500">
-            OFFICE SYSTEM
-          </p>
+        <div className="relative z-10 flex flex-col items-center gap-4 text-center" role="status" aria-live="polite">
+          <span aria-hidden="true" className="h-12 w-12 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600" />
+          <p className="text-sm font-medium text-slate-500">{text}</p>
         </div>
       </div>
     </div>

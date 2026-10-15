@@ -1,5 +1,5 @@
-import LoadingScreen from "@/components/LoadingScreen";
+import RouteLoadingScreen from "@/components/RouteLoadingScreen";
 
 export default function Loading() {
-  return <LoadingScreen />;
+  return <RouteLoadingScreen />;
 }

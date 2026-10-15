@@ -4,11 +4,16 @@ import {canAccessBackoffice,menuPermission,hasPermission} from '@/lib/permission
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import LoadingScreen from '@/components/LoadingScreen';
+import AppLaunchLoading from '@/components/AppLaunchLoading';
+import {markAppOpened} from '@/lib/loadingLifecycle';
+
+let initialSessionResolved = false;
 export default function SessionGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname(); const router = useRouter();
   const publicPage = ['/login', '/admin-login', '/register', '/pending'].includes(pathname);
   const [access,setAccess]=useState({permissions:[] as string[],isSuperAdmin:false});
   const [checkedPath, setCheckedPath] = useState(''); const [error, setError] = useState(''); const [retry, setRetry] = useState(0);
+  useEffect(() => { if (publicPage) markAppOpened(); }, [publicPage]);
   useEffect(() => {
     if (publicPage) return;
     let active = true;
@@ -22,13 +27,13 @@ export default function SessionGate({ children }: { children: React.ReactNode })
         setAccess({permissions:data.permissions||[],isSuperAdmin:!!data.isSuperAdmin});
         localStorage.setItem('employee_data', JSON.stringify(data.employee)); localStorage.setItem('line_profile', JSON.stringify(data.profile));
         if (document.visibilityState === 'visible') void fetch('/api/presence', { method: 'POST' });
-        setError(''); setCheckedPath(pathname);
+        initialSessionResolved = true; markAppOpened(); setError(''); setCheckedPath(pathname);
       } catch (error) { if (active) setError(error instanceof Error ? error.message : 'เชื่อมต่อระบบไม่ได้'); }
     }
     void validate(); const interval = setInterval(validate, 60000); window.addEventListener('focus', validate);
     return () => { active = false; clearInterval(interval); window.removeEventListener('focus', validate); };
   }, [pathname, publicPage, router, retry]);
   if (publicPage) return children;
-  if (error || checkedPath !== pathname) return error?<div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center"><p role="alert">{error}</p><button className="rounded-xl bg-blue-600 px-6 py-3 text-white" onClick={() => { setError(''); setRetry(retry + 1); }}>ลองอีกครั้ง</button></div>:<LoadingScreen text="กำลังตรวจสอบการเข้าสู่ระบบ…"/>;
+  if (error || checkedPath !== pathname) return error?<div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center"><p role="alert">{error}</p><button className="rounded-xl bg-blue-600 px-6 py-3 text-white" onClick={() => { setError(''); setRetry(retry + 1); }}>ลองอีกครั้ง</button></div>:initialSessionResolved?<LoadingScreen text="กำลังโหลดหน้า…"/>:<AppLaunchLoading/>;
   return <PermissionsContext.Provider value={access}>{children}</PermissionsContext.Provider>;
 }
