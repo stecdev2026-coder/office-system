@@ -25,17 +25,20 @@ export async function POST(request:NextRequest){
   if(!['in','checkpoint','out'].includes(b.kind)||!Number.isFinite(b.latitude)||!Number.isFinite(b.longitude)||typeof b.locationId!=='string')throw new AuthError('ข้อมูลลงเวลาไม่ถูกต้อง');
   // Client GPS is evidence of a reported position, not proof against mock-location software.
   if(!Number.isFinite(b.timestamp)||Math.abs(Date.now()-b.timestamp)>120000)throw new AuthError('ตำแหน่งหมดอายุ กรุณาตรวจตำแหน่งใหม่');
-  if(!Number.isFinite(b.accuracy)||b.accuracy<0||b.accuracy>200)throw new AuthError('GPS คลาดเคลื่อนเกิน 200 เมตร กรุณาตรวจตำแหน่งใหม่');
+  if(!Number.isFinite(b.accuracy)||b.accuracy<0)throw new AuthError('ค่าความคลาดเคลื่อน GPS ไม่ถูกต้อง');
   if(b.photoUrl){
    const prefix=`/api/photos?path=${employee.id}/`;
    if(typeof b.photoUrl!=='string'||!b.photoUrl.startsWith(prefix))throw new AuthError('รูปไม่ถูกต้อง');
    const path=b.photoUrl.slice('/api/photos?path='.length); const file=await database().storage.from('attendance_photos').download(path);
    if(file.error)throw new AuthError('ไม่พบรูปยืนยัน');
   }
-  const db=database(),location=await db.from('attendance_locations').select('latitude,longitude').eq('id',b.locationId).maybeSingle();
+  const db=database(),location=await db.from('attendance_locations').select('latitude,longitude,radius_km').eq('id',b.locationId).maybeSingle();
   const distance=location.data?distanceInKm(b.latitude,b.longitude,Number(location.data.latitude),Number(location.data.longitude)):null;
+  const outside=distance===null?'ไม่สามารถลงชื่อเข้างานได้ เนื่องจากอยู่นอกพื้นที่ทำงาน':`ไม่สามารถลงชื่อเข้างานได้ เนื่องจากห่างจากสถานที่ทำงาน ${formatDistance(distance)} กม.`;
+  if(distance!==null&&distance>Number(location.data?.radius_km))throw new AuthError(outside,409);
+  if(b.accuracy>200)throw new AuthError(`ไม่สามารถตรวจสอบตำแหน่งได้ เนื่องจาก GPS คลาดเคลื่อน ${formatDistance(b.accuracy/1000)} กม. กรุณาเปิดตำแหน่งที่แม่นยำแล้วลองใหม่`);
   const {data,error}=await db.rpc('office_record_attendance',{p_employee_id:employee.id,p_location_id:b.locationId,p_kind:b.kind,p_lat:b.latitude,p_lng:b.longitude,p_photo:b.photoUrl||null});
-  if(error){const outside=distance===null?'ไม่สามารถลงชื่อเข้างานได้ เนื่องจากอยู่นอกพื้นที่ทำงาน':`ไม่สามารถลงชื่อเข้างานได้ เนื่องจากห่างจากสถานที่ทำงาน ${formatDistance(distance)} กม.`;const messages:Record<string,string>={OUTSIDE_RADIUS:outside,LOCATION_DENIED:'ไม่ได้รับสิทธิ์ลงเวลาที่สถานที่นี้',PHOTO_REQUIRED:'กรุณาถ่ายรูปก่อนลงเวลา',ALREADY_STARTED:'ลงเวลาเข้างานแล้ว',NO_OPEN_ATTENDANCE:'ยังไม่เข้างาน หรือออกงานแล้ว',INVALID_INPUT:'พิกัดไม่ถูกต้อง'};throw new AuthError(Object.entries(messages).find(([key])=>error.message.includes(key))?.[1]||'บันทึกลงเวลาไม่สำเร็จ',409);}
+  if(error){const messages:Record<string,string>={OUTSIDE_RADIUS:outside,LOCATION_DENIED:'ไม่ได้รับสิทธิ์ลงเวลาที่สถานที่นี้',PHOTO_REQUIRED:'กรุณาถ่ายรูปก่อนลงเวลา',ALREADY_STARTED:'ลงเวลาเข้างานแล้ว',NO_OPEN_ATTENDANCE:'ยังไม่เข้างาน หรือออกงานแล้ว',INVALID_INPUT:'พิกัดไม่ถูกต้อง'};throw new AuthError(Object.entries(messages).find(([key])=>error.message.includes(key))?.[1]||'บันทึกลงเวลาไม่สำเร็จ',409);}
   return NextResponse.json({id:data});
  }catch(e){return failure(e);}
 }
