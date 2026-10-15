@@ -1,6 +1,6 @@
 "use client";
 import BackButton from "@/components/BackButton";
-import LogoLoader from "@/components/LogoLoader";
+import LoadingScreen from "@/components/LoadingScreen";
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -467,7 +467,7 @@ export default function LeaveRequestPage() {
             </h2>
 
             {isLoadingPending ? (
-              <LogoLoader text="กำลังโหลดข้อมูลคำขอ…" size="md" className="py-20"/>
+              <LoadingScreen text="กำลังโหลดข้อมูลคำขอ…"/>
             ) : pendingRequests.length === 0 ? (
               <div className="bg-white rounded-3xl p-10 text-center shadow-sm border border-gray-100 flex flex-col items-center">
                 <CheckCircle2 size={40} className="text-green-500 mb-3 md:w-12 md:h-12" />

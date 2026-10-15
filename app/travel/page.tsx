@@ -17,6 +17,7 @@ import {
 import { toast } from "sonner";
 import { createClient } from "@/utils/supabase/client";
 import Tooltip from "@/components/ui/Tooltip";
+import LoadingScreen from "@/components/LoadingScreen";
 
 export default function TravelPage() {
   const router = useRouter();
@@ -267,6 +268,10 @@ export default function TravelPage() {
       setIsSubmitting(false);
     }
   };
+
+  if (!employee || loadingLocation) {
+    return <LoadingScreen text="กำลังโหลดข้อมูลการเดินทาง…" />;
+  }
 
   return (
     // 🌟 ขยายขนาดความกว้างสำหรับ iPad (md:max-w-3xl) และเพิ่มเงา

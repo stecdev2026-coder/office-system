@@ -3,7 +3,7 @@ import {PermissionsContext} from '@/components/Permissions';
 import {canAccessBackoffice,menuPermission,hasPermission} from '@/lib/permissions/catalog';
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import LogoLoader from '@/components/LogoLoader';
+import LoadingScreen from '@/components/LoadingScreen';
 export default function SessionGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname(); const router = useRouter();
   const publicPage = ['/login', '/admin-login', '/register', '/pending'].includes(pathname);
@@ -29,6 +29,6 @@ export default function SessionGate({ children }: { children: React.ReactNode })
     return () => { active = false; clearInterval(interval); window.removeEventListener('focus', validate); };
   }, [pathname, publicPage, router, retry]);
   if (publicPage) return children;
-  if (error || checkedPath !== pathname) return <div data-admin-loading={pathname==='/admin'||pathname.startsWith('/admin/')?true:undefined} className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center">{error?<><p role="alert">{error}</p><button className="rounded-xl bg-blue-600 px-6 py-3 text-white" onClick={() => { setError(''); setRetry(retry + 1); }}>ลองอีกครั้ง</button></>:<LogoLoader text="กำลังตรวจสอบการเข้าสู่ระบบ…" size="lg"/>}</div>;
+  if (error || checkedPath !== pathname) return error?<div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center"><p role="alert">{error}</p><button className="rounded-xl bg-blue-600 px-6 py-3 text-white" onClick={() => { setError(''); setRetry(retry + 1); }}>ลองอีกครั้ง</button></div>:<LoadingScreen text="กำลังตรวจสอบการเข้าสู่ระบบ…"/>;
   return <PermissionsContext.Provider value={access}>{children}</PermissionsContext.Provider>;
 }

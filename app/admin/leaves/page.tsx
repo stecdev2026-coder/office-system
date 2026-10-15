@@ -1,7 +1,7 @@
 "use client";
 
 import {usePermissions} from '@/components/Permissions';
-import LogoLoader from '@/components/LogoLoader';
+import LoadingScreen from '@/components/LoadingScreen';
 import React, { useState, useEffect } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
@@ -181,7 +181,7 @@ export default function LeaveRequestsPage() {
               {loading ? (
                 <tr key="loading-row">
                   <td colSpan={6} className="px-6 py-12 text-center text-gray-400">
-                    <LogoLoader text="กำลังโหลดข้อมูลการลา…" size="sm" />
+                    <LoadingScreen text="กำลังโหลดข้อมูลการลา…"/>
                   </td>
                 </tr>
               ) : filteredLeaves.length === 0 ? (

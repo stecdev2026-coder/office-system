@@ -21,7 +21,6 @@ import {
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
 import LoadingScreen from "@/components/LoadingScreen";
-import LogoLoader from "@/components/LogoLoader";
 import { createPortal } from "react-dom"; // 🌟 ใช้ createPortal ให้ Popup ทับทุกสิ่ง
 
 export default function LeaveHistoryPage() {
@@ -316,7 +315,7 @@ export default function LeaveHistoryPage() {
       <div className="flex-1 px-6 md:px-10 pt-4 pb-8 overflow-y-auto custom-scrollbar relative z-20">
         
         {isLoading ? (
-          <LogoLoader text="กำลังโหลดประวัติการลา…" size="md" className="py-20"/>
+          <LoadingScreen text="กำลังโหลดประวัติการลา…"/>
         ) : leaveList.length === 0 ? (
           <div className="bg-white rounded-3xl p-12 text-center shadow-sm border border-gray-100 flex flex-col items-center mt-4">
             <FileText size={48} className="text-gray-300 mb-3" />

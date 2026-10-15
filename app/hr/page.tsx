@@ -1,5 +1,6 @@
 "use client";
 import BackButton from "@/components/BackButton";
+import LoadingScreen from "@/components/LoadingScreen";
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -194,7 +195,7 @@ export default function HrDashboardPage() {
     setLeaveUsage(usage);
   };
 
-  if (!employee) return null;
+  if (!employee) return <LoadingScreen text="กำลังโหลดข้อมูลงานบุคคล…"/>;
 
   // ตั้งค่าโควตาการลา (ดึงจาก Employee ถ้ามี ถ้าไม่มีใช้ค่าพื้นฐาน)
   const annualQuota = employee.annual_leave_quota || 6;

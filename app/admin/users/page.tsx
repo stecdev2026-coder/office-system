@@ -2,7 +2,7 @@
 import {usePermissions,Can} from '@/components/Permissions';
 import EmployeeImport from '@/components/EmployeeImport';
 import AdminSelect from "@/components/ui/AdminSelect";
-import LogoLoader from "@/components/LogoLoader";
+import LoadingScreen from "@/components/LoadingScreen";
 
 import EmployeeAccountForm from "@/components/EmployeeAccountForm";
 import React, { useState, useEffect } from "react";
@@ -318,7 +318,7 @@ export default function UsersManagementPage() {
                     colSpan={5}
                     className="px-6 py-12 text-center text-gray-400"
                   >
-                    <LogoLoader text="กำลังโหลดข้อมูลพนักงาน…" size="sm" />
+                    <LoadingScreen text="กำลังโหลดข้อมูลพนักงาน…"/>
                   </td>
                 </tr>
               ) : filteredUsers.length === 0 ? (

@@ -143,7 +143,7 @@ button, [role="button"], input[type="button"], input[type="submit"], input[type=
 [data-logo-loader-track]{border:3px solid #dfe5ee;}
 [data-logo-loader-spinner]{padding:3px;background:conic-gradient(from -90deg,#2563eb 0deg,#0ea5e9,#22c55e var(--loader-progress),transparent var(--loader-progress));filter:drop-shadow(0 0 4px #2563eb70);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);mask-composite:exclude;}
 [data-logo-loader-label]{min-width:4ch;font-variant-numeric:tabular-nums;}
-[data-logo-loader-label] strong{color:#2563eb;font-weight:700;}
+[data-logo-loader-label] strong{color:inherit;font-weight:500;}
 @media(prefers-reduced-motion:reduce){[data-logo-loader-spinner]{filter:none}}
 
 /* Quiet, shared employee home and attendance UI. */

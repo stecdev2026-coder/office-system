@@ -1,6 +1,6 @@
 "use client";
 import BackButton from "@/components/BackButton";
-import LogoLoader from "@/components/LogoLoader";
+import LoadingScreen from "@/components/LoadingScreen";
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -273,7 +273,7 @@ export default function NotificationsPage() {
       {/* รายการแจ้งเตือน */}
       <div className="flex-1 overflow-y-auto custom-scrollbar px-6 md:px-10 pt-4 pb-8 relative z-20">
         {isLoading ? (
-          <LogoLoader text="กำลังโหลดการแจ้งเตือน…" size="md" className="py-20"/>
+          <LoadingScreen text="กำลังโหลดการแจ้งเตือน…"/>
         ) : displayNotifications.length === 0 ? (
           <div className="bg-white rounded-3xl p-12 text-center shadow-sm border border-gray-100 flex flex-col items-center mt-4">
             <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center text-gray-300 mb-4">
