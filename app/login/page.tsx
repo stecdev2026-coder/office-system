@@ -2,9 +2,8 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Loader2, MessageCircle, Eye, EyeOff, ShieldCheck, Clock3, MonitorSmartphone, ArrowRight } from 'lucide-react';
+import { Loader2, MessageCircle, Eye, EyeOff, ShieldCheck, Clock3, MonitorSmartphone, ArrowRight, KeyRound } from 'lucide-react';
 import { toast } from 'sonner';
-import { createClient } from '@/utils/supabase/client';
 import { deviceTokenFor, saveLogin } from '@/lib/auth/client';
 import {canAccessBackoffice} from '@/lib/permissions/catalog';
 import LoadingScreen from '@/components/LoadingScreen';
@@ -13,14 +12,16 @@ export default function LoginPage() {
   const [username, setUsername] = useState(''); const [password, setPassword] = useState('');
   const [visible, setVisible] = useState(false); const [busy, setBusy] = useState(false);
   const [lineEnabled, setLineEnabled] = useState(false); const [setupError, setSetupError] = useState('');
-  const [mode, setMode] = useState<'password' | 'email'>('password');
-  const [email, setEmail] = useState(''); const [otp, setOtp] = useState(''); const [otpSent, setOtpSent] = useState(false);
+  const [mode, setMode] = useState<'password' | 'pin'>('password');
+  const [pin,setPin]=useState('');
+  const [pinIdentity,setPinIdentity]=useState<{employeeId:string;identity:string}|null>(null);
   const [adminChoice,setAdminChoice]=useState(false);
   const [checkingSession,setCheckingSession]=useState(true),[transition,setTransition]=useState('');
   function desktop(){return window.matchMedia('(min-width: 1024px)').matches;}
   function enter(data:{permissions?:string[]}){if(canAccessBackoffice(data.permissions||[])){if(desktop()){setTransition('กำลังเปิดระบบ Admin…');router.replace('/admin');}else{setAdminChoice(true);setCheckingSession(false);}}else{setTransition('กำลังเปิดระบบลงเวลาพนักงาน…');router.replace('/');}}
   useEffect(() => {
     let active = true;
+    try{const saved=JSON.parse(localStorage.getItem('office_pin_identity')||'null');if(saved?.employeeId&&saved?.identity)setPinIdentity(saved);}catch{}
     fetch('/api/auth/session', { cache: 'no-store' }).then(async response => {
       if (response.ok && active) { const data = await response.json(); localStorage.setItem('employee_data', JSON.stringify(data.employee)); localStorage.setItem('line_profile', JSON.stringify(data.profile)); enter(data); }
       else if(active)setCheckingSession(false);
@@ -59,21 +60,15 @@ export default function LoginPage() {
     } catch (error) { toast.error(error instanceof Error ? error.message : 'เข้าสู่ LINE ไม่สำเร็จ'); }
     finally { setBusy(false); }
   }
-  async function submitEmail(event: FormEvent) {
-    event.preventDefault(); if (busy) return; setBusy(true); const supabase = createClient();
-    try {
-      if (!otpSent) {
-        const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
-        if (error) throw new Error('ส่ง OTP ไม่สำเร็จ กรุณาตรวจสอบอีเมล');
-        setOtpSent(true); toast.success('ส่ง OTP ไปยังอีเมลแล้ว');
-      } else {
-        const { data, error } = await supabase.auth.verifyOtp({ email, token: otp, type: 'email' });
-        if (error || !data.session) throw new Error('OTP ไม่ถูกต้องหรือหมดอายุ');
-        try { await finish('/api/auth/email', { accessToken: data.session.access_token }, email.toLowerCase()); }
-        finally { await supabase.auth.signOut(); }
-      }
-    } catch (error) { toast.error(error instanceof Error ? error.message : 'เข้าสู่ระบบไม่สำเร็จ'); }
-    finally { setBusy(false); }
+  async function submitPin(event:FormEvent){
+    event.preventDefault();if(busy)return;
+    if(!pinIdentity){toast.error('ยังไม่มี PIN บนเครื่องนี้ กรุณาเข้าสู่ระบบด้วยชื่อผู้ใช้ก่อน');return;}
+    const deviceToken=localStorage.getItem(`office_device:employee_${pinIdentity.employeeId}`)||localStorage.getItem(`office_device:${pinIdentity.identity}`)||localStorage.getItem('device_token');
+    if(!deviceToken){toast.error('ไม่พบข้อมูลเครื่อง กรุณาเข้าสู่ระบบด้วยชื่อผู้ใช้ก่อน');return;}
+    setBusy(true);
+    try{const response=await fetch('/api/auth/pin-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({employeeId:pinIdentity.employeeId,deviceToken,pin})}),data=await response.json();if(!response.ok)throw Error(data.error);saveLogin(data,deviceToken,pinIdentity.identity);toast.success('เข้าสู่ระบบด้วย PIN สำเร็จ');enter(data);}
+    catch(error){toast.error(error instanceof Error?error.message:'เข้าสู่ระบบด้วย PIN ไม่สำเร็จ');}
+    finally{setPin('');setBusy(false);}
   }
   const input = 'w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 outline-none focus:border-blue-500';
   if(checkingSession||transition)return <LoadingScreen text={transition||'กำลังตรวจสอบการเข้าสู่ระบบ…'}/>;
@@ -96,14 +91,15 @@ export default function LoginPage() {
           <div><label htmlFor="password" className="mb-2 block text-sm font-bold">รหัสผ่าน</label><div className="relative"><input id="password" name="password" type={visible ? 'text' : 'password'} autoComplete="current-password" required maxLength={128} value={password} onChange={event => setPassword(event.target.value)} className={`${input} pr-14`} /><button type="button" aria-label={visible ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'} onClick={() => setVisible(!visible)} className="absolute inset-y-0 right-1 w-12 flex items-center justify-center text-gray-500">{visible ? <EyeOff size={20} /> : <Eye size={20} />}</button></div></div>
           <p className="text-xs leading-relaxed text-gray-500">พนักงานใช้ได้ 1 เครื่อง หากเปลี่ยนเครื่องให้ติดต่อส่วนกลาง</p>
           <button disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 py-4 font-bold text-white disabled:opacity-50">{busy && <Loader2 className="animate-spin" size={20} />}เข้าสู่ระบบ</button>
-        </form> : <form onSubmit={submitEmail} className="space-y-4">
-          <label htmlFor="email" className="block text-sm font-bold">อีเมลสำรอง</label><input id="email" type="email" required autoComplete="email" disabled={otpSent} value={email} onChange={event => setEmail(event.target.value)} className={input} />
-          {otpSent && <><label htmlFor="otp" className="block text-sm font-bold">รหัส OTP</label><input id="otp" autoComplete="one-time-code" inputMode="numeric" required pattern="[0-9]{6,8}" maxLength={8} value={otp} onChange={event => setOtp(event.target.value)} className={input} /></>}
-          <button disabled={busy} className="w-full rounded-2xl bg-blue-600 py-4 font-bold text-white disabled:opacity-50">{busy ? 'กำลังดำเนินการ…' : otpSent ? 'ยืนยันและเข้าสู่ระบบ' : 'ส่ง OTP'}</button>
-          {otpSent && <button type="button" disabled={busy} onClick={() => { setOtpSent(false); setOtp(''); }} className="w-full py-2 text-sm text-gray-500">เปลี่ยนอีเมล</button>}
+        </form> : <form onSubmit={submitPin} className="space-y-4">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600"><KeyRound size={24}/></div>
+          <div className="text-center"><h2 className="font-bold text-slate-900">เข้าสู่ระบบด้วย PIN</h2><p className="mt-1 text-xs leading-relaxed text-slate-500">ใช้ PIN 6 หลักของบัญชีที่ผูกกับเครื่องนี้</p></div>
+          <label htmlFor="pin" className="block text-sm font-bold">PIN 6 หลัก</label><input id="pin" type="password" required autoComplete="off" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={pin} onChange={event=>setPin(event.target.value.replace(/\D/g,'').slice(0,6))} className={`${input} text-center text-2xl font-bold tracking-[0.45em]`} />
+          {!pinIdentity&&<p role="status" className="rounded-xl bg-amber-50 p-3 text-xs leading-relaxed text-amber-800">เครื่องนี้ยังไม่มีข้อมูล PIN กรุณาเข้าสู่ระบบด้วยชื่อผู้ใช้และตั้ง PIN ในข้อมูลส่วนตัวก่อน</p>}
+          <button disabled={busy||pin.length!==6||!pinIdentity} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 py-4 font-bold text-white disabled:opacity-50">{busy&&<Loader2 className="animate-spin" size={20}/>}เข้าสู่ระบบด้วย PIN</button>
         </form>}
         {lineEnabled && <button onClick={loginLine} disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#06c755] py-4 font-bold text-white disabled:opacity-50"><MessageCircle size={22} />เข้าสู่ระบบด้วย LINE</button>}
-        <button disabled={busy} onClick={() => { setMode(mode === 'password' ? 'email' : 'password'); setOtp(''); }} className="w-full py-3 text-sm font-medium text-gray-600">{mode === 'password' ? 'เข้าสู่ระบบด้วยอีเมลสำรอง' : 'กลับไปใช้ชื่อผู้ใช้และรหัสผ่าน'}</button>
+        <button disabled={busy} onClick={() => { setMode(mode === 'password' ? 'pin' : 'password'); setPin(''); }} className="w-full py-3 text-sm font-medium text-gray-600">{mode === 'password' ? 'เข้าสู่ระบบด้วย PIN' : 'กลับไปใช้ชื่อผู้ใช้และรหัสผ่าน'}</button>
       </div><p className="mt-8 text-center text-xs text-gray-400">ต้องการบัญชีหรือเปลี่ยนเครื่อง ติดต่อผู้ดูแลระบบ</p>
     </div>
   </div>;

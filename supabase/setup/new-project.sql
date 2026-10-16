@@ -85,7 +85,7 @@ create table if not exists public.office_sessions (
   token_hash text primary key,
   employee_id text not null,
   device_hash text not null,
-  auth_method text not null check (auth_method in ('password','line','email')),
+  auth_method text not null check (auth_method in ('password','line','email','pin')),
   expires_at timestamptz not null default now() + interval '30 days',
   created_at timestamptz not null default now()
 );
@@ -94,8 +94,10 @@ create table if not exists public.office_pin_credentials (
   device_hash text not null,
   pin_hash text not null,
   enabled boolean not null default true,
+  reauth_expires_at timestamptz,
   updated_at timestamptz not null default now()
 );
+alter table public.office_pin_credentials add column if not exists reauth_expires_at timestamptz;
 create index if not exists office_sessions_employee on public.office_sessions(employee_id);
 create table if not exists public.office_login_attempts (
   key text primary key,

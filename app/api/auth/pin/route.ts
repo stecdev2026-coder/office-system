@@ -18,7 +18,7 @@ export async function POST(request:NextRequest){try{checkOrigin(request);const {
   if(!validPin(body.pin)||body.pin!==body.confirmPin)throw new AuthError('PIN ต้องเป็นตัวเลข 6 หลักและยืนยันให้ตรงกัน');
   const fresh=Date.now()-Date.parse(session.created_at||0)<10*60000;
   if(stored.data?.enabled&&!fresh){if(!validPin(body.currentPin)||!await verifyPassword(body.currentPin,stored.data.pin_hash))throw new AuthError('PIN ปัจจุบันไม่ถูกต้อง',403);}
-  const result=await db.from('office_pin_credentials').upsert({employee_id:employeeId,device_hash:session.device_hash,pin_hash:await hashPassword(body.pin),enabled:true,updated_at:new Date().toISOString()});if(result.error)throw result.error;return NextResponse.json({ok:true,enabled:true});
+  const result=await db.from('office_pin_credentials').upsert({employee_id:employeeId,device_hash:session.device_hash,pin_hash:await hashPassword(body.pin),enabled:true,reauth_expires_at:session.expires_at,updated_at:new Date().toISOString()});if(result.error)throw result.error;return NextResponse.json({ok:true,enabled:true});
  }
  if(action==='disable'){
   if(!stored.data?.enabled)return NextResponse.json({ok:true,enabled:false});const fresh=Date.now()-Date.parse(session.created_at||0)<10*60000;

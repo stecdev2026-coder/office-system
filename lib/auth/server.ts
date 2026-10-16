@@ -62,6 +62,8 @@ export async function issueSession(request: NextRequest, employee: Record<string
   }
   const access = await permissionsFor(String(employee.id)),sessionDays=access.isSuperAdmin||employee.role==='Admin'?30:90,expiresAt=new Date(Date.now()+sessionDays*86400000).toISOString();
   const expiry=await db.from('office_sessions').update({expires_at:expiresAt}).eq('token_hash',hashedToken);if(expiry.error)throw new AuthError('กำหนดอายุ session ไม่สำเร็จ',503);
+  const pinExpiry=await db.from('office_pin_credentials').update({reauth_expires_at:expiresAt,device_hash:tokenHash(deviceToken),updated_at:new Date().toISOString()}).eq('employee_id',String(employee.id));
+  if(pinExpiry.error)throw new AuthError('ปรับอายุ PIN ไม่สำเร็จ',503);
   const response = NextResponse.json({ ...access, sessionDays, employee: {...publicEmployee(employee),is_super_admin:access.isSuperAdmin}, profile: { userId: employee.line_user_id || `employee_${employee.id}`, displayName: `${employee.first_name || ''} ${employee.last_name || ''}`.trim(), pictureUrl: employee.profile_photo_url || '' } });
   response.headers.set('Cache-Control', 'no-store');
   response.cookies.set('office_session', token, { httpOnly: true, sameSite: 'lax', secure: new URL(process.env.APP_URL || request.url).protocol === 'https:', path: '/', maxAge: 60 * 60 * 24 * sessionDays });

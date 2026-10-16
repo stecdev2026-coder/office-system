@@ -10,6 +10,7 @@ export function saveLogin(data: { employee: { id: unknown }; profile: unknown },
   localStorage.setItem('device_token', deviceToken);
   localStorage.setItem('employee_data', JSON.stringify(data.employee));
   localStorage.setItem('line_profile', JSON.stringify(data.profile));
+  localStorage.setItem('office_pin_identity', JSON.stringify({employeeId:String(data.employee.id),identity:identity.toLowerCase()}));
   sessionStorage.setItem('office_pin_unlocked','1');
 }
 export async function logout(destination = "/login") {
