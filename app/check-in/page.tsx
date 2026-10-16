@@ -6,8 +6,10 @@ import AdminSelect from '@/components/ui/AdminSelect';
 import AttendanceCamera from '@/components/AttendanceCamera';
 import LoadingScreen from '@/components/LoadingScreen';
 import {toast} from 'sonner';
+import {useRouter} from 'next/navigation';
 type Position={latitude:number;longitude:number;accuracy:number;timestamp:number};
 export default function CheckInPage(){
+ const router=useRouter();
  const [data,D]=useState<any>(null),[locationId,I]=useState(''),[gps,G]=useState<Position|null>(null),[photo,P]=useState<File|null>(null),[busy,B]=useState(false),[locating,L]=useState(false),[error,E]=useState(''),[gpsError,GE]=useState(''),[captureKey,K]=useState(0),[now,N]=useState(()=>new Date());
  const accuracyButton=useRef<HTMLButtonElement>(null);
  async function load(){try{const r=await fetch('/api/attendance',{cache:'no-store'}),d=await r.json();if(!r.ok)throw Error(d.error);D(d);I(old=>d.locations.some((l:any)=>l.id===old)?old:'');E('');if(d.locationOptional)window.setTimeout(()=>accuracyButton.current?.focus(),80);}catch(e:any){E(e.message);}}
@@ -19,7 +21,9 @@ export default function CheckInPage(){
   const fresh=await position();G(fresh);GE('');
   let photoUrl=null;if(data.photoRequired&&photo){const form=new FormData();form.set('file',photo);const r=await fetch('/api/photos',{method:'POST',body:form}),d=await r.json();if(!r.ok)throw Error(d.error);photoUrl=d.url;}
   const r=await fetch('/api/attendance',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind,locationId:locationId||null,...fresh,photoUrl})}),d=await r.json();if(!r.ok)throw Error(d.error);
-  P(null);K(k=>k+1);toast.success('บันทึกลงเวลาแล้ว');await load();
+  P(null);K(k=>k+1);toast.success(kind==='in'?'ลงเวลาเข้างานแล้ว':kind==='out'?'ลงเวลาออกงานแล้ว':'บันทึกเช็คอินระหว่างวันแล้ว');
+  if(kind==='in'||kind==='out'){router.replace('/');router.refresh();return;}
+  await load();
  }catch(e:any){toast.error(e.message);}finally{B(false);}}
  const open=data?.record&&!data.record.check_out_time,complete=!!data?.record?.check_out_time;
  return <div className="app-page"><header className="staff-header staff-header-back gap-3"><BackButton fallback="/"/><div><h1 className="font-semibold text-lg">ลงเวลางาน</h1><p className="text-xs text-slate-500">เข้า–ออก และเช็คอินระหว่างวัน</p></div></header><main className="staff-content space-y-5">
