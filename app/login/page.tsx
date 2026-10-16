@@ -2,10 +2,11 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Loader2, MessageCircle, Eye, EyeOff } from 'lucide-react';
+import { Loader2, MessageCircle, Eye, EyeOff, ShieldCheck, Clock3, MonitorSmartphone, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/utils/supabase/client';
 import { deviceTokenFor, saveLogin } from '@/lib/auth/client';
+import {canAccessBackoffice} from '@/lib/permissions/catalog';
 export default function LoginPage() {
   const router = useRouter();
   const [username, setUsername] = useState(''); const [password, setPassword] = useState('');
@@ -13,10 +14,13 @@ export default function LoginPage() {
   const [lineEnabled, setLineEnabled] = useState(false); const [setupError, setSetupError] = useState('');
   const [mode, setMode] = useState<'password' | 'email'>('password');
   const [email, setEmail] = useState(''); const [otp, setOtp] = useState(''); const [otpSent, setOtpSent] = useState(false);
+  const [adminChoice,setAdminChoice]=useState(false);
+  function desktop(){return window.matchMedia('(min-width: 1024px)').matches;}
+  function enter(data:{permissions?:string[]}){if(canAccessBackoffice(data.permissions||[])){if(desktop())router.replace('/admin');else setAdminChoice(true);}else router.replace('/');}
   useEffect(() => {
     let active = true;
     fetch('/api/auth/session', { cache: 'no-store' }).then(async response => {
-      if (response.ok && active) { const data = await response.json(); localStorage.setItem('employee_data', JSON.stringify(data.employee)); localStorage.setItem('line_profile', JSON.stringify(data.profile)); router.replace('/'); }
+      if (response.ok && active) { const data = await response.json(); localStorage.setItem('employee_data', JSON.stringify(data.employee)); localStorage.setItem('line_profile', JSON.stringify(data.profile)); enter(data); }
     }).catch(() => {});
     fetch('/api/auth/settings', { cache: 'no-store' }).then(async response => {
       const data = await response.json(); if (!active) return;
@@ -32,7 +36,7 @@ export default function LoginPage() {
     const data = await response.json(); if (!response.ok) throw new Error(data.error);
     if (data.registrationRequired) { localStorage.setItem('temp_line_profile', JSON.stringify(data.profile)); router.replace('/register'); return; }
     if (data.pending) { localStorage.setItem('line_profile', JSON.stringify(data.profile)); router.replace('/pending'); return; }
-    saveLogin(data, deviceToken, identity); toast.success('เข้าสู่ระบบสำเร็จ'); router.replace('/');
+    saveLogin(data, deviceToken, identity); toast.success('เข้าสู่ระบบสำเร็จ'); enter(data);
   }
   async function submitPassword(event: FormEvent) {
     event.preventDefault(); if (busy) return; setBusy(true);
@@ -69,6 +73,7 @@ export default function LoginPage() {
     finally { setBusy(false); }
   }
   const input = 'w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 outline-none focus:border-blue-500';
+  if(adminChoice)return <div data-login-page className="app-page overflow-y-auto!"><div className="flex min-h-full items-center justify-center bg-[linear-gradient(145deg,#f8f5fc,#eef6ff_55%,#ecfdf5)] p-6"><section className="w-full max-w-md rounded-[28px] border border-white/80 bg-white/95 p-6 shadow-xl shadow-blue-900/10 sm:p-8"><div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600"><ShieldCheck size={31}/></div><h1 className="mt-5 text-center text-2xl font-bold text-slate-900">เลือกโหมดการใช้งาน</h1><p className="mt-2 text-center text-sm text-slate-500">บัญชีนี้ใช้งานได้ทั้งระบบพนักงานและระบบ Admin</p><div className="mt-7 space-y-3"><button type="button" onClick={()=>router.replace('/')} className="flex w-full items-center gap-4 rounded-2xl border border-blue-100 bg-blue-50 p-4 text-left text-blue-950 transition hover:bg-blue-100"><span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white text-blue-600 shadow-sm"><Clock3 size={24}/></span><span className="min-w-0 flex-1"><b className="block">ระบบลงเวลาพนักงาน</b><small className="mt-1 block text-blue-700">ลงเวลา ลางาน ปฏิทิน และการเดินทาง</small></span><ArrowRight size={19}/></button><button type="button" onClick={()=>router.replace('/admin')} className="flex w-full items-center gap-4 rounded-2xl bg-blue-600 p-4 text-left text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"><span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/15"><MonitorSmartphone size={24}/></span><span className="min-w-0 flex-1"><b className="block">ระบบ Admin</b><small className="mt-1 block text-blue-100">จัดการพนักงาน กลุ่มงาน และข้อมูลระบบ</small></span><ArrowRight size={19}/></button></div><p className="mt-6 text-center text-xs text-slate-400">บนคอมพิวเตอร์ ระบบจะเข้าสู่หน้า Admin อัตโนมัติ</p></section></div></div>;
   return <div data-login-page className="app-page overflow-y-auto!">
     <div className="relative shrink-0 overflow-hidden">
     <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-1/2 w-[150%] -translate-x-1/2 rounded-b-[50%] bg-cover bg-center md:w-[120%]" style={{ backgroundImage: "url('/img/login-bg.jpg')" }}>
