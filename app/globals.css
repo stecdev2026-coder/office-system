@@ -119,6 +119,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .pwa-controls { flex-shrink: 0; display: flex; gap: 12px; align-items: center; padding: 8px 16px; background: #eff6ff; color: #1d4ed8; font-size: 13px; z-index: 45; }
 .pwa-controls button, .pwa-controls summary { min-height: 44px; display: flex; align-items: center; font-weight: 700; cursor: pointer; }
 .pwa-controls details p { max-width: 32rem; padding-block: 8px; }
+.pwa-update-banner{flex-shrink:0;z-index:48;display:flex;align-items:center;gap:12px;padding:12px 16px;background:linear-gradient(135deg,#eff6ff,#ecfdf5);border-top:1px solid #bfdbfe;color:#1e3a8a;box-shadow:0 -8px 24px #1e3a8a14;}
+.pwa-update-banner small{margin-top:2px;color:#64748b;line-height:1.35;}
+.pwa-update-banner button{display:flex;min-height:42px;flex-shrink:0;align-items:center;justify-content:center;gap:7px;border-radius:12px;background:#2563eb;padding:9px 13px;color:#fff;font-size:13px;font-weight:700;box-shadow:0 6px 16px #2563eb30;}
+.pwa-update-banner button:hover{background:#1d4ed8}.pwa-update-banner button:disabled{opacity:.6}.pwa-update-icon{display:flex;height:38px;width:38px;flex-shrink:0;align-items:center;justify-content:center;border-radius:12px;background:#dbeafe;color:#2563eb;}
+@media(max-width:420px){.pwa-update-banner{align-items:flex-start;flex-wrap:wrap}.pwa-update-banner button{width:100%}}
 @media (display-mode: standalone) { .app-viewport { background: linear-gradient(145deg,#f8f6fb,#f1f7fb 55%,#eff8f4); } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
 .app-page:has(input[type="email"]) > .flex-1 { min-height: 0; overflow-y: auto; }

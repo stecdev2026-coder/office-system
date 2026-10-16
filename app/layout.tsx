@@ -24,6 +24,7 @@ export const metadata: Metadata = {
 };
 export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#f4f6f9" };
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const currentVersion=process.env.VERCEL_GIT_COMMIT_SHA||process.env.VERCEL_DEPLOYMENT_ID||"development";
   return (
     <html lang="th" suppressHydrationWarning>
       <body className={notoSansThai.className}>
@@ -37,7 +38,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               <Toaster position="top-center" richColors closeButton />
             </main>
 
-            <PwaControls />
+            <PwaControls currentVersion={currentVersion} />
             <div className="app-navigation">
               <BottomNav />
             </div>
