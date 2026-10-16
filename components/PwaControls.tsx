@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { toast } from "sonner";
 import {Smartphone,Share,Download} from 'lucide-react';
+import {enableMobileNotifications} from '@/lib/push/client';
 type InstallEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> };
 export default function PwaControls() {
   const pathname = usePathname();
@@ -39,17 +40,9 @@ export default function PwaControls() {
   async function enablePush() {
     setBusy(true);
     try {
-      if (await Notification.requestPermission() !== 'granted') { toast.info('ยังไม่ได้อนุญาตการแจ้งเตือน'); return; }
-      const registration = await navigator.serviceWorker.getRegistration('/');
-      if (!registration?.active) throw new Error('worker unavailable');
-      const key = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!;
-      const bytes = Uint8Array.from(atob(key.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
-      const existing = await registration.pushManager.getSubscription();
-      const subscription = existing || await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: bytes });
-      const response = await fetch(process.env.NEXT_PUBLIC_PUSH_SUBSCRIBE_URL!, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(subscription) });
-      if (!response.ok) { if (!existing) await subscription.unsubscribe(); throw new Error('subscription failed'); }
+      await enableMobileNotifications();
       setPush(false); toast.success('เปิดการแจ้งเตือนแล้ว');
-    } catch { toast.error('เปิดการแจ้งเตือนไม่สำเร็จ กรุณาลองอีกครั้ง'); }
+    } catch (error) { toast.error(error instanceof Error ? error.message : 'เปิดการแจ้งเตือนไม่สำเร็จ กรุณาลองอีกครั้ง'); }
     finally { setBusy(false); }
   }
   if (pathname !== '/' && pathname !== '/notifications') return null;
