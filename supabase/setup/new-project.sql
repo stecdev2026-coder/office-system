@@ -639,6 +639,10 @@ begin;
 alter table public.work_groups
  add column if not exists attendance_without_location boolean not null default false;
 
+insert into public.work_groups(name,branch,allowed_weekdays,weekly_days,active,attendance_without_location)
+values ('ไม่ต้องเลือกสถานที่','',array[0,1,2,3,4,5,6],6,true,true)
+on conflict(name) do update set active=true,attendance_without_location=true;
+
 alter table public.attendance_events
  alter column location_id drop not null;
 

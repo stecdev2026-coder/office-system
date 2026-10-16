@@ -1,13 +1,37 @@
 "use client";
-import AdminDatePicker from "@/components/ui/AdminDatePicker";
-import {usePermissions} from '@/components/Permissions';
-import {useEffect,useState} from 'react';
 import LoadingScreen from '@/components/LoadingScreen';
-export default function Reports(){const {can}=usePermissions();const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());const [start,S]=useState(today),[end,E]=useState(today),[data,D]=useState<any>(null),[error,X]=useState(''),[query,Q]=useState('');
- useEffect(()=>{let alive=true;async function load(){try{const r=await fetch(`/api/admin/reports?start=${start}&end=${end}`,{cache:'no-store'}),d=await r.json();if(!r.ok)throw Error(d.error);if(alive){D(d);X('');}}catch(e:any){if(alive)X(e.message);}}void load();const timer=setInterval(load,30000);return()=>{alive=false;clearInterval(timer);};},[start,end]);
- const rows=data?.rows.filter((r:any)=>[r.name,r.branch,r.employee_code].join(' ').toLowerCase().includes(query.toLowerCase()))||[];
- return <div className="space-y-6"><h1 className="text-2xl font-bold">สรุปลงเวลาและสถานะออนไลน์</h1><p className="text-gray-500">อัปเดตทุก 30 วินาที · ออนไลน์ = ใช้งานแอปภายใน 2 นาที</p><div className="flex flex-wrap gap-4 items-end"><AdminDatePicker label="ตั้งแต่" value={start} onChange={S} max={end}/><AdminDatePicker label="ถึง" value={end} onChange={E} min={start}/><a hidden={!can("attendance.export")} href={`/api/admin/reports?start=${start}&end=${end}&format=xlsx`} className="bg-green-700 text-white p-3 rounded-lg">ดาวน์โหลด Excel ทั้งช่วงวัน</a><input placeholder="ค้นหาชื่อ รหัส สาขา" value={query} onChange={e=>Q(e.target.value)} className="border rounded-lg p-3"/></div>{error&&<p role="alert" className="text-red-600">{error}</p>}{!data&&!error&&<LoadingScreen text="กำลังโหลดรายงานลงเวลา…"/>}
- <div className="grid md:grid-cols-3 gap-4">{[['รายการลงเวลา',data?.rows.length],['ยังไม่ออกงานในช่วงที่เลือก',data?.rows.filter((r:any)=>!r.check_out_time).length],['ออนไลน์ตอนนี้',data?.employees.filter((e:any)=>e.online).length]].map(([label,n])=><div key={String(label)} className="bg-white rounded-2xl p-6"><p>{label}</p><b className="text-3xl">{n??'—'}</b></div>)}</div>
- <div className="bg-white rounded-2xl overflow-x-auto"><table className="w-full text-sm text-left whitespace-nowrap"><thead><tr>{['วันที่','ชื่อ / สาขา','เข้างาน','เช็คอินเพิ่ม','ออกงาน','วันทำงาน'].map(h=><th key={h} className="p-4 border-b">{h}</th>)}</tr></thead><tbody>{rows.map((r:any)=><tr key={r.id}><td className="p-4">{r.work_date}</td><td className="p-4">{r.name}<small className="block text-gray-500">{r.branch||'—'}</small></td><td className="p-4">{r.check_in_time?new Date(r.check_in_time).toLocaleTimeString('th-TH',{timeZone:'Asia/Bangkok'}):'—'}</td><td className="p-4">{r.checkpoints}</td><td className="p-4">{r.check_out_time?new Date(r.check_out_time).toLocaleTimeString('th-TH',{timeZone:'Asia/Bangkok'}):'กำลังทำงาน'}</td><td className="p-4">{r.scheduled===null?'ยังไม่ตั้งค่า':r.scheduled?'วันทำงาน':'วันหยุด'}</td></tr>)}</tbody></table>{!rows.length&&<p className="p-6 text-gray-400">ไม่มีรายการในช่วงวันที่เลือก</p>}</div>
- <section className="bg-white p-6 rounded-2xl"><h2 className="font-bold mb-4">สถานะผู้ใช้ตอนนี้</h2><div className="grid md:grid-cols-2 xl:grid-cols-3 gap-3">{data?.employees.map((u:any)=><div key={u.id} className="border rounded-xl p-4"><b>{u.name}</b><p className={u.online?'text-green-700':'text-gray-400'}>{u.online?'● ออนไลน์':'○ ออฟไลน์'} · {!u.is_active?'บัญชีปิดใช้งาน':u.working?'กำลังทำงาน':u.signedOut?'ออกงานแล้ว':'ยังไม่เข้างาน'}</p></div>)}</div></section></div>;
+import {Building2,Clock3,LogIn,LogOut,MapPin,RefreshCw,Wifi} from 'lucide-react';
+import {useCallback,useEffect,useMemo,useState} from 'react';
+
+const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+const time=(value?:string)=>value?new Date(value).toLocaleTimeString('th-TH',{timeZone:'Asia/Bangkok',hour:'2-digit',minute:'2-digit'}):'—';
+const thaiDate=(value:string)=>new Date(`${value}T12:00:00+07:00`).toLocaleDateString('th-TH',{timeZone:'Asia/Bangkok',weekday:'long',day:'numeric',month:'long',year:'numeric'});
+
+export default function CurrentAttendance(){
+ const date=today(),[data,setData]=useState<any>(null),[error,setError]=useState(''),[tab,setTab]=useState<'active'|'out'>('active'),[refreshing,setRefreshing]=useState(false);
+ const load=useCallback(async(silent=false)=>{if(!silent)setRefreshing(true);try{const r=await fetch(`/api/admin/reports?start=${date}&end=${date}`,{cache:'no-store'}),d=await r.json();if(!r.ok)throw Error(d.error);setData(d);setError('');}catch(e:any){setError(e.message);}finally{setRefreshing(false);}},[date]);
+ useEffect(()=>{void load();const timer=setInterval(()=>void load(true),30000);return()=>clearInterval(timer);},[load]);
+ const active=useMemo(()=>(data?.rows||[]).filter((r:any)=>r.check_in_time&&!r.check_out_time),[data]);
+ const out=useMemo(()=>(data?.rows||[]).filter((r:any)=>r.check_out_time),[data]);
+ const rows=tab==='active'?active:out;
+ return <div className="space-y-6">
+  <header className="flex flex-wrap items-end justify-between gap-4"><div><h1>ลงเวลางานตอนนี้</h1><p className="mt-2 text-sm text-gray-500">{thaiDate(date)} · อัปเดตข้อมูลทุก 30 วินาที</p></div><button type="button" onClick={()=>void load()} disabled={refreshing} className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-blue-600 shadow-sm disabled:opacity-50"><RefreshCw size={17} className={refreshing?'animate-spin':''}/>อัปเดตข้อมูล</button></header>
+  {error&&<p role="alert" className="rounded-xl bg-red-50 p-4 text-red-700 shadow-sm">{error}</p>}
+  {!data&&!error&&<LoadingScreen text="กำลังโหลดข้อมูลลงเวลาวันนี้…"/>}
+  {data&&<section className="admin-panel overflow-hidden">
+   <div className="grid grid-cols-2 gap-2 bg-slate-50 p-2" role="tablist" aria-label="สถานะการลงเวลา">
+    <button type="button" role="tab" aria-selected={tab==='active'} onClick={()=>setTab('active')} className={`cursor-pointer rounded-xl px-4 py-4 text-sm font-semibold transition ${tab==='active'?'bg-white text-emerald-700 shadow':'text-gray-500 hover:bg-white/70'}`}><LogIn size={18} className="mr-2 inline"/>ลงเวลาเข้างาน <span className="ml-2 rounded-full bg-emerald-100 px-2 py-1 text-xs text-emerald-700">{active.length}</span></button>
+    <button type="button" role="tab" aria-selected={tab==='out'} onClick={()=>setTab('out')} className={`cursor-pointer rounded-xl px-4 py-4 text-sm font-semibold transition ${tab==='out'?'bg-white text-rose-700 shadow':'text-gray-500 hover:bg-white/70'}`}><LogOut size={18} className="mr-2 inline"/>ลงชื่อออกงาน <span className="ml-2 rounded-full bg-rose-100 px-2 py-1 text-xs text-rose-700">{out.length}</span></button>
+   </div>
+   <div className="divide-y divide-slate-100">
+    {rows.map((row:any)=><article key={row.id} className="grid gap-4 p-5 transition hover:bg-slate-50/70 md:grid-cols-[1.4fr_1fr_1fr_0.7fr] md:items-center">
+     <div><b className="block text-base text-slate-800">{row.name||'ไม่พบชื่อพนักงาน'}</b><span className="mt-1 block text-xs text-gray-500">{row.employee_code||'ไม่มีรหัสพนักงาน'}</span></div>
+     <div className="flex items-start gap-2 text-sm"><Building2 size={17} className="mt-0.5 shrink-0 text-slate-400"/><span>{[row.department||row.division,row.branch].filter(Boolean).join(' · ')||'ไม่ระบุสังกัด/สาขา'}</span></div>
+     <div className="flex items-start gap-2 text-sm"><MapPin size={17} className="mt-0.5 shrink-0 text-blue-500"/><span><small className="block text-gray-400">{tab==='active'?'สถานที่ลงเวลาเข้า':'สถานที่ลงเวลาออก'}</small>{tab==='active'?row.check_in_location:row.check_out_location}</span></div>
+     <div className="flex items-center justify-between gap-3 md:block"><div className="flex items-center gap-2 text-sm"><Clock3 size={17} className="text-slate-400"/><b>{time(tab==='active'?row.check_in_time:row.check_out_time)} น.</b></div>{tab==='active'&&<span className={`mt-2 inline-flex items-center gap-2 text-xs font-medium ${row.online?'text-emerald-700':'text-gray-400'}`}><i className={`h-2 w-2 rounded-full ${row.online?'animate-pulse bg-emerald-500':'bg-gray-300'}`}/><Wifi size={14}/>{row.online?'ออนไลน์':'ออฟไลน์'}</span>}</div>
+    </article>)}
+    {!rows.length&&<div className="p-12 text-center text-sm text-gray-400">{tab==='active'?'ยังไม่มีพนักงานที่กำลังทำงานในวันนี้':'ยังไม่มีพนักงานลงชื่อออกงานในวันนี้'}</div>}
+   </div>
+  </section>}
+ </div>;
 }

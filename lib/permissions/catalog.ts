@@ -7,7 +7,7 @@ export const permissionCatalog=[
  ['permissions.view','ดู Permission','สิทธิ์'],['permissions.manage','จัดการบทบาทและมอบสิทธิ์','สิทธิ์'],['calendar.manage','จัดการปฏิทิน','ระบบ'],['travel.manage','จัดการการเดินทาง','ระบบ']
 ] as const;
 export const allPermissionKeys=permissionCatalog.map(p=>p[0]);
-export const menuPermission:Record<string,string>={'/admin/attendance':'attendance.view','/admin/absence':'absence.view','/admin/users':'users.view','/admin/groups':'groups.view','/admin/workforce':'locations.view','/admin/leaves':'requests.view','/admin/settings':'settings.view','/admin/usage':'usage.view','/admin/permissions':'permissions.view'};
+export const menuPermission:Record<string,string>={'/admin/attendance':'attendance.view','/admin/unclosed':'attendance.view','/admin/reports':'attendance.view','/admin/absence':'absence.view','/admin/users':'users.view','/admin/groups':'groups.view','/admin/workforce':'locations.view','/admin/leaves':'requests.view','/admin/holidays':'settings.view','/admin/settings':'settings.view','/admin/usage':'usage.view','/admin/permissions':'permissions.view'};
 menuPermission['/admin/workforce/create']='locations.edit';
 Object.assign(menuPermission,{'/admin/groups/create':'groups.edit','/admin/groups/edit':'groups.view','/admin/groups/schedules':'groups.view','/admin/groups/schedules/create':'groups.edit','/admin/groups/schedules/edit':'groups.view','/admin/permissions/create':'permissions.manage','/admin/permissions/edit':'permissions.view','/admin/permissions/assign':'permissions.view'});
 export const hasPermission=(permissions:readonly string[],key:string)=>permissions.includes('*')||permissions.includes(key);
