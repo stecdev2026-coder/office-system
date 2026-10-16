@@ -10,23 +10,23 @@ import {useRouter} from 'next/navigation';
 type Position={latitude:number;longitude:number;accuracy:number;timestamp:number};
 export default function CheckInPage(){
  const router=useRouter();
- const [data,D]=useState<any>(null),[locationId,I]=useState(''),[gps,G]=useState<Position|null>(null),[photo,P]=useState<File|null>(null),[busy,B]=useState(false),[locating,L]=useState(false),[error,E]=useState(''),[gpsError,GE]=useState(''),[captureKey,K]=useState(0),[now,N]=useState(()=>new Date());
+ const [data,D]=useState<any>(null),[locationId,I]=useState(''),[gps,G]=useState<Position|null>(null),[photo,P]=useState<File|null>(null),[busy,B]=useState(false),[recordingKind,setRecordingKind]=useState(''),[redirecting,setRedirecting]=useState(false),[locating,L]=useState(false),[error,E]=useState(''),[gpsError,GE]=useState(''),[captureKey,K]=useState(0),[now,N]=useState(()=>new Date());
  const accuracyButton=useRef<HTMLButtonElement>(null);
  async function load(){try{const r=await fetch('/api/attendance',{cache:'no-store'}),d=await r.json();if(!r.ok)throw Error(d.error);D(d);I(old=>d.locations.some((l:any)=>l.id===old)?old:'');E('');if(d.locationOptional)window.setTimeout(()=>accuracyButton.current?.focus(),80);}catch(e:any){E(e.message);}}
  function position():Promise<Position>{return new Promise((resolve,reject)=>{if(!navigator.geolocation){reject(Error('เบราว์เซอร์นี้ไม่รองรับการระบุตำแหน่ง'));return;}navigator.geolocation.getCurrentPosition(p=>resolve({latitude:p.coords.latitude,longitude:p.coords.longitude,accuracy:p.coords.accuracy,timestamp:p.timestamp}),e=>reject(Error(e.code===1?'กรุณาอนุญาตตำแหน่งเพื่อใช้ลงเวลา':'ค้นหาตำแหน่งไม่สำเร็จ กรุณาเปิด GPS และลองใหม่')),{enableHighAccuracy:true,timeout:20000,maximumAge:0});});}
  async function locate(){L(true);GE('');try{G(await position());}catch(e:any){G(null);GE(e.message);}finally{L(false);}}
  useEffect(()=>{void load();const timer=window.setInterval(()=>N(new Date()),1000);return()=>window.clearInterval(timer);},[]);
- async function record(kind:string){B(true);try{
+ async function record(kind:string){setRecordingKind(kind);B(true);try{
   if(!data.locationOptional&&!locationId)throw Error('เลือกสถานที่ก่อนลงเวลา');if(!gps)throw Error('กรุณาเช็คความคลาดเคลื่อนก่อนลงเวลา');if(data.photoRequired&&!photo)throw Error('กรุณาถ่ายรูปก่อนลงเวลา');
   const fresh=await position();G(fresh);GE('');
   let photoUrl=null;if(data.photoRequired&&photo){const form=new FormData();form.set('file',photo);const r=await fetch('/api/photos',{method:'POST',body:form}),d=await r.json();if(!r.ok)throw Error(d.error);photoUrl=d.url;}
   const r=await fetch('/api/attendance',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind,locationId:locationId||null,...fresh,photoUrl})}),d=await r.json();if(!r.ok)throw Error(d.error);
   P(null);K(k=>k+1);toast.success(kind==='in'?'ลงเวลาเข้างานแล้ว':kind==='out'?'ลงเวลาออกงานแล้ว':'บันทึกเช็คอินระหว่างวันแล้ว');
-  if(kind==='in'||kind==='out'){router.replace('/');router.refresh();return;}
+  if(kind==='in'||kind==='out'){setRedirecting(true);router.replace('/');router.refresh();return;}
   await load();
- }catch(e:any){toast.error(e.message);}finally{B(false);}}
+ }catch(e:any){toast.error(e.message);}finally{B(false);setRecordingKind('');}}
  const open=data?.record&&!data.record.check_out_time,complete=!!data?.record?.check_out_time;
- return <div className="app-page"><header className="staff-header staff-header-back gap-3"><BackButton fallback="/"/><div><h1 className="font-semibold text-lg">ลงเวลางาน</h1><p className="text-xs text-slate-500">เข้า–ออก และเช็คอินระหว่างวัน</p></div></header><main className="staff-content space-y-5">
+ return <div className="app-page">{(busy||redirecting)&&<LoadingScreen text={recordingKind==='in'?'กำลังบันทึกเวลาเข้างาน…':recordingKind==='out'?'กำลังบันทึกเวลาออกงาน…':'กำลังบันทึกเช็คอินระหว่างวัน…'}/>}<header className="staff-header staff-header-back gap-3"><BackButton fallback="/"/><div><h1 className="font-semibold text-lg">ลงเวลางาน</h1><p className="text-xs text-slate-500">เข้า–ออก และเช็คอินระหว่างวัน</p></div></header><main className="staff-content space-y-5">
  <section className="staff-card checkin-hero relative overflow-hidden text-center"><span aria-hidden="true" className="absolute right-5 top-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600 shadow-sm"><Clock size={25}/></span><span className="staff-eyebrow justify-center pr-12 text-base md:text-lg"><Clock size={19}/>{now.toLocaleDateString('th-TH',{timeZone:'Asia/Bangkok',dateStyle:'long'})}</span><time className="mt-3 block text-[2.75rem] font-bold leading-none tracking-tight text-emerald-700 md:text-[3rem]">{now.toLocaleTimeString('th-TH',{timeZone:'Asia/Bangkok',hour:'2-digit',minute:'2-digit',second:'2-digit'})}</time><h2 className="mt-4 text-xs font-semibold md:text-sm">{complete?'ออกงานเรียบร้อย':open?'กำลังทำงาน':'ลงเวลาเริ่มงาน'}</h2><p className="mt-2 text-sm text-slate-600">{complete?'ตรวจสอบรายการลงเวลาด้านล่างได้เลย':'บันทึกตำแหน่งปัจจุบันของคุณในสถานที่ที่ได้รับสิทธิ์'}</p></section>
  {error&&<p role="alert" className="text-rose-700">{error}<button onClick={load} className="ml-3 underline">ลองใหม่</button></p>}
  {!data&&!error&&<LoadingScreen text="กำลังโหลดสถานที่…"/>}

@@ -1,0 +1,14 @@
+"use client";
+import LoadingScreen from '@/components/LoadingScreen';
+import {canAccessBackoffice} from '@/lib/permissions/catalog';
+import {ArrowRight,Clock3,MonitorSmartphone,ShieldCheck} from 'lucide-react';
+import {useRouter} from 'next/navigation';
+import {useEffect,useState} from 'react';
+
+export default function ModePage(){
+ const router=useRouter(),[ready,setReady]=useState(false),[switching,setSwitching]=useState('');
+ useEffect(()=>{let active=true;fetch('/api/auth/session',{cache:'no-store'}).then(async response=>{if(!response.ok){router.replace('/login');return;}const data=await response.json();if(!canAccessBackoffice(data.permissions||[])){router.replace('/');return;}if(active)setReady(true);}).catch(()=>router.replace('/login'));return()=>{active=false;};},[router]);
+ function open(path:'/'|'/admin',label:string){setSwitching(label);router.replace(path);router.refresh();}
+ if(!ready||switching)return <LoadingScreen text={switching?`กำลังเปิด${switching}…`:'กำลังเปิดตัวเลือกโหมด…'}/>;
+ return <div data-login-page className="app-page overflow-y-auto!"><div className="flex min-h-full items-center justify-center bg-[linear-gradient(145deg,#f8f5fc,#eef6ff_55%,#ecfdf5)] p-6"><section className="w-full max-w-md rounded-[28px] border border-white/80 bg-white/95 p-6 shadow-xl shadow-blue-900/10 sm:p-8"><div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600"><ShieldCheck size={31}/></div><h1 className="mt-5 text-center text-2xl font-bold text-slate-900">เลือกโหมดการใช้งาน</h1><p className="mt-2 text-center text-sm text-slate-500">บัญชีนี้ใช้งานได้ทั้งระบบพนักงานและระบบ Admin</p><div className="mt-7 space-y-3"><button type="button" onClick={()=>open('/','ระบบลงเวลาพนักงาน')} className="flex w-full items-center gap-4 rounded-2xl border border-blue-100 bg-blue-50 p-4 text-left text-blue-950 transition hover:bg-blue-100"><span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white text-blue-600 shadow-sm"><Clock3 size={24}/></span><span className="min-w-0 flex-1"><b className="block">ระบบลงเวลาพนักงาน</b><small className="mt-1 block text-blue-700">ลงเวลา ลางาน ปฏิทิน และการเดินทาง</small></span><ArrowRight size={19}/></button><button type="button" onClick={()=>open('/admin','ระบบ Admin')} className="flex w-full items-center gap-4 rounded-2xl bg-blue-600 p-4 text-left text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"><span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/15"><MonitorSmartphone size={24}/></span><span className="min-w-0 flex-1"><b className="block">ระบบ Admin</b><small className="mt-1 block text-blue-100">จัดการพนักงาน กลุ่มงาน และข้อมูลระบบ</small></span><ArrowRight size={19}/></button></div><p className="mt-6 text-center text-xs text-slate-400">เลือกโหมดได้ใหม่จากเมนูรูปโปรไฟล์</p></section></div></div>;
+}
