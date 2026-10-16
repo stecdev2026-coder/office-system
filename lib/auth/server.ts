@@ -27,6 +27,23 @@ export function publicEmployee(employee: Record<string, unknown>) {
   const { device_token: _device, ...safe } = employee;
   return safe;
 }
+export function deviceMetadata(request:NextRequest){
+  const ua=request.headers.get('user-agent')||'',hint=(request.headers.get('sec-ch-ua-platform')||'').replaceAll('"','');
+  let device_type='คอมพิวเตอร์',device_name='อุปกรณ์ไม่ทราบรุ่น',platform=hint||'ไม่ทราบระบบ',browser='เบราว์เซอร์ไม่ทราบชนิด';
+  if(/iPhone/i.test(ua)){device_type='มือถือ';device_name='iPhone';platform='iOS';}
+  else if(/iPad/i.test(ua)){device_type='แท็บเล็ต';device_name='iPad';platform='iPadOS';}
+  else if(/Android/i.test(ua)){device_type=/Mobile/i.test(ua)?'มือถือ':'แท็บเล็ต';const model=ua.match(/Android[^;]*;\s*([^;)]+?)(?:\s+Build[/;]|[;)])/i)?.[1]?.trim();device_name=model||'อุปกรณ์ Android';platform=`Android ${ua.match(/Android\s+([\d.]+)/i)?.[1]||''}`.trim();}
+  else if(/Windows/i.test(ua)){device_name='คอมพิวเตอร์ Windows';platform='Windows';}
+  else if(/Macintosh|Mac OS X/i.test(ua)){device_name='Mac';platform='macOS';}
+  else if(/Linux/i.test(ua)){device_name='คอมพิวเตอร์ Linux';platform='Linux';}
+  if(/Edg\//i.test(ua))browser=`Microsoft Edge ${ua.match(/Edg\/([\d.]+)/i)?.[1]||''}`.trim();
+  else if(/CriOS\//i.test(ua))browser=`Chrome ${ua.match(/CriOS\/([\d.]+)/i)?.[1]||''}`.trim();
+  else if(/Chrome\//i.test(ua))browser=`Chrome ${ua.match(/Chrome\/([\d.]+)/i)?.[1]||''}`.trim();
+  else if(/FxiOS\//i.test(ua))browser=`Firefox ${ua.match(/FxiOS\/([\d.]+)/i)?.[1]||''}`.trim();
+  else if(/Firefox\//i.test(ua))browser=`Firefox ${ua.match(/Firefox\/([\d.]+)/i)?.[1]||''}`.trim();
+  else if(/Safari\//i.test(ua))browser='Safari';
+  return {device_type,device_name,platform,browser,user_agent:ua.slice(0,500),last_seen_at:new Date().toISOString()};
+}
 export async function currentSession() {
   const token = (await cookies()).get('office_session')?.value;
   if (!token) throw new AuthError('กรุณาเข้าสู่ระบบ', 401);
@@ -60,6 +77,8 @@ export async function issueSession(request: NextRequest, employee: Record<string
     if (error.message.includes('LINE_DISABLED')) throw new AuthError('ปิดการลงชื่อผ่าน LINE แล้ว', 403);
     throw new AuthError('บันทึก session ไม่สำเร็จ', 503);
   }
+  const remembered=await db.from('office_devices').update(deviceMetadata(request)).eq('employee_id',String(employee.id)).eq('device_hash',tokenHash(deviceToken));
+  if(remembered.error)throw new AuthError('บันทึกรายละเอียดอุปกรณ์ไม่สำเร็จ',503);
   const access = await permissionsFor(String(employee.id)),sessionDays=access.isSuperAdmin||employee.role==='Admin'?30:90,expiresAt=new Date(Date.now()+sessionDays*86400000).toISOString();
   const expiry=await db.from('office_sessions').update({expires_at:expiresAt}).eq('token_hash',hashedToken);if(expiry.error)throw new AuthError('กำหนดอายุ session ไม่สำเร็จ',503);
   const pinExpiry=await db.from('office_pin_credentials').update({reauth_expires_at:expiresAt,device_hash:tokenHash(deviceToken),updated_at:new Date().toISOString()}).eq('employee_id',String(employee.id));

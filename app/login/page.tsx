@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { deviceTokenFor, saveLogin } from '@/lib/auth/client';
 import {canAccessBackoffice} from '@/lib/permissions/catalog';
 import LoadingScreen from '@/components/LoadingScreen';
+import PinKeypad from '@/components/PinKeypad';
 export default function LoginPage() {
   const router = useRouter();
   const [username, setUsername] = useState(''); const [password, setPassword] = useState('');
@@ -94,7 +95,7 @@ export default function LoginPage() {
         </form> : <form onSubmit={submitPin} className="space-y-4">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600"><KeyRound size={24}/></div>
           <div className="text-center"><h2 className="font-bold text-slate-900">เข้าสู่ระบบด้วย PIN</h2><p className="mt-1 text-xs leading-relaxed text-slate-500">ใช้ PIN 6 หลักของบัญชีที่ผูกกับเครื่องนี้</p></div>
-          <label htmlFor="pin" className="block text-sm font-bold">PIN 6 หลัก</label><input id="pin" type="password" required autoComplete="off" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={pin} onChange={event=>setPin(event.target.value.replace(/\D/g,'').slice(0,6))} className={`${input} text-center text-2xl font-bold tracking-[0.45em]`} />
+          <PinKeypad value={pin} onChange={setPin} disabled={busy}/>
           {!pinIdentity&&<p role="status" className="rounded-xl bg-amber-50 p-3 text-xs leading-relaxed text-amber-800">เครื่องนี้ยังไม่มีข้อมูล PIN กรุณาเข้าสู่ระบบด้วยชื่อผู้ใช้และตั้ง PIN ในข้อมูลส่วนตัวก่อน</p>}
           <button disabled={busy||pin.length!==6||!pinIdentity} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 py-4 font-bold text-white disabled:opacity-50">{busy&&<Loader2 className="animate-spin" size={20}/>}เข้าสู่ระบบด้วย PIN</button>
         </form>}

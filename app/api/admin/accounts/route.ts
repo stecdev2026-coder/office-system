@@ -8,7 +8,7 @@ export async function GET() {
     const db = database();
     const [accounts, devices] = await Promise.all([
       db.from('office_credentials').select('employee_id,username'),
-      db.from('office_devices').select('employee_id,bound_at,last_seen_at'),
+      db.from('office_devices').select('employee_id,bound_at,last_seen_at,device_type,device_name,platform,browser'),
     ]);
     if (accounts.error || devices.error) throw new AuthError('โหลดข้อมูลบัญชีไม่สำเร็จ', 503);
     return NextResponse.json({ accounts: accounts.data, devices: devices.data }, { headers: { 'Cache-Control': 'no-store' } });

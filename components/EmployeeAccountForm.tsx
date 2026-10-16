@@ -2,16 +2,17 @@
 import { useEffect, useState } from 'react';
 import PasswordInput from '@/components/ui/PasswordInput';
 import { toast } from 'sonner';
+import {Clock3,MonitorSmartphone,Smartphone,Tablet} from 'lucide-react';
 export default function EmployeeAccountForm({ employeeId }: { employeeId: string }) {
   const [username, setUsername] = useState(''); const [password, setPassword] = useState('');
   const [oldPassword,setOldPassword]=useState(''); const [confirmPassword,setConfirmPassword]=useState(''); const [hasPassword,setHasPassword]=useState(false);
-  const [bound, setBound] = useState(false); const [ready, setReady] = useState(false); const [busy, setBusy] = useState(false); const [error, setError] = useState('');
+  const [bound, setBound] = useState(false); const [device,setDevice]=useState<any>(null); const [ready, setReady] = useState(false); const [busy, setBusy] = useState(false); const [error, setError] = useState('');
   useEffect(() => { let active = true;
     fetch('/api/admin/accounts', { cache: 'no-store' }).then(async response => {
       const data = await response.json(); if (!response.ok) throw new Error(data.error); if (!active) return;
       setHasPassword(data.accounts.some((account: { employee_id: string }) => account.employee_id === employeeId));
       setUsername(data.accounts.find((account: { employee_id: string }) => account.employee_id === employeeId)?.username || '');
-      setBound(data.devices.some((device: { employee_id: string }) => device.employee_id === employeeId)); setReady(true);
+      const currentDevice=data.devices.find((device: { employee_id: string }) => device.employee_id === employeeId)||null;setDevice(currentDevice);setBound(!!currentDevice); setReady(true);
     }).catch(error => { if (active) setError(error.message); });
     return () => { active = false; };
   }, [employeeId]);
@@ -28,12 +29,12 @@ export default function EmployeeAccountForm({ employeeId }: { employeeId: string
     finally { setBusy(false); }
   }
   async function resetDevice() {
-    if (!window.confirm('รีเซ็ตเครื่องและออกจากระบบทุก session ของผู้ใช้นี้?')) return;
+    if (!window.confirm(`รีเซ็ต ${device?.device_name||'เครื่องที่ผูกไว้'} และออกจากระบบทุก session ของผู้ใช้นี้?`)) return;
     setBusy(true);
     try {
       const response = await fetch('/api/admin/accounts', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ employeeId }) });
       const data = await response.json(); if (!response.ok) throw new Error(data.error);
-      setBound(false); toast.success('รีเซ็ตแล้ว ผู้ใช้สามารถลงชื่อเพื่อผูกเครื่องใหม่');
+      setBound(false);setDevice(null); toast.success('รีเซ็ตแล้ว ผู้ใช้สามารถลงชื่อเพื่อผูกเครื่องใหม่');
     } catch (error) { toast.error(error instanceof Error ? error.message : 'รีเซ็ตไม่สำเร็จ'); }
     finally { setBusy(false); }
   }
@@ -46,6 +47,6 @@ export default function EmployeeAccountForm({ employeeId }: { employeeId: string
     <label className="block text-sm">ยืนยันรหัสผ่าน<PasswordInput disabled={!ready||busy} autoComplete="new-password" maxLength={128} value={confirmPassword} onChange={e=>setConfirmPassword(e.target.value)} className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2"/></label>
     </div><p className="text-xs text-gray-500">รหัสผ่านอย่างน้อย 8 ตัว เว้นว่างเพื่อใช้รหัสเดิม บัญชีใหม่ต้องกำหนดรหัสผ่าน</p>
     <button type="button" disabled={!ready || busy} onClick={save} className="rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white disabled:opacity-50">บันทึกบัญชีเข้าใช้งาน</button>
-    <div className="flex items-center justify-between gap-3 border-t border-blue-100 pt-3"><span className="text-xs text-gray-600">{bound ? 'ผูกเครื่องแล้ว (1 เครื่อง)' : 'ยังไม่ได้ผูกเครื่อง'}</span><button type="button" disabled={!ready || busy || !bound} onClick={resetDevice} className="text-sm font-bold text-red-600 disabled:opacity-40">รีเซ็ตเครื่อง</button></div>
+    <div className="border-t border-blue-100 pt-3">{bound&&device?<div className="mb-3 rounded-2xl bg-white p-4 shadow-sm"><div className="flex items-start gap-3"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">{device.device_type==='มือถือ'?<Smartphone size={22}/>:device.device_type==='แท็บเล็ต'?<Tablet size={22}/>:<MonitorSmartphone size={22}/>}</span><div className="min-w-0 flex-1"><p className="font-bold text-slate-900">{device.device_name||'มีเครื่องที่ผูกไว้'}</p><p className="mt-0.5 text-xs text-slate-500">{[device.device_type,device.platform,device.browser].filter(Boolean).join(' · ')||'ยังไม่มีรายละเอียดอุปกรณ์ รอผู้ใช้เข้าสู่ระบบครั้งถัดไป'}</p></div><span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">ผูกอยู่</span></div><div className="mt-3 grid gap-2 border-t border-slate-100 pt-3 text-xs text-slate-500 sm:grid-cols-2"><span className="flex items-center gap-1.5"><Clock3 size={14}/>ผูกเมื่อ {device.bound_at?new Date(device.bound_at).toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'}):'—'}</span><span className="flex items-center gap-1.5"><Clock3 size={14}/>ใช้ล่าสุด {device.last_seen_at?new Date(device.last_seen_at).toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'}):'—'}</span></div></div>:<p className="mb-3 text-xs text-gray-600">ยังไม่ได้ผูกเครื่อง</p>}<div className="flex items-center justify-between gap-3"><span className="text-xs text-gray-500">{bound?'ตรวจสอบข้อมูลเครื่องเก่าก่อนรีเซ็ต':'ผู้ใช้สามารถผูกเครื่องเมื่อเข้าสู่ระบบ'}</span><button type="button" disabled={!ready || busy || !bound} onClick={resetDevice} className="cursor-pointer text-sm font-bold text-red-600 disabled:opacity-40">รีเซ็ตเครื่อง</button></div></div>
   </section>;
 }

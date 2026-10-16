@@ -78,9 +78,19 @@ create table if not exists public.office_credentials (
 create table if not exists public.office_devices (
   employee_id text primary key,
   device_hash text not null,
+  device_type text,
+  device_name text,
+  platform text,
+  browser text,
+  user_agent text,
   bound_at timestamptz not null default now(),
   last_seen_at timestamptz not null default now()
 );
+alter table public.office_devices add column if not exists device_type text;
+alter table public.office_devices add column if not exists device_name text;
+alter table public.office_devices add column if not exists platform text;
+alter table public.office_devices add column if not exists browser text;
+alter table public.office_devices add column if not exists user_agent text;
 create table if not exists public.office_sessions (
   token_hash text primary key,
   employee_id text not null,

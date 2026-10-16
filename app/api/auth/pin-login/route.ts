@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { permissionsFor } from '@/lib/permissions/server';
-import { AuthError, checkOrigin, database, failure, publicEmployee } from '@/lib/auth/server';
+import { AuthError, checkOrigin, database, deviceMetadata, failure, publicEmployee } from '@/lib/auth/server';
 import { newToken, tokenHash, verifyPassword } from '@/lib/auth/crypto';
 
 export const runtime = 'nodejs';
@@ -28,6 +28,8 @@ export async function POST(request:NextRequest){
   if(!await verifyPassword(pin,credential.pin_hash))throw new AuthError('PIN ไม่ถูกต้อง',401);
   const token=newToken(),hashedToken=tokenHash(token),issued=await db.rpc('office_issue_session',{p_employee_id:employeeId,p_device_hash:deviceHash,p_token_hash:hashedToken,p_method:'pin'});
   if(issued.error)throw new AuthError('สร้าง session ไม่สำเร็จ',503);
+  const remembered=await db.from('office_devices').update(deviceMetadata(request)).eq('employee_id',employeeId).eq('device_hash',deviceHash);
+  if(remembered.error)throw new AuthError('บันทึกรายละเอียดอุปกรณ์ไม่สำเร็จ',503);
   const expiry=await db.from('office_sessions').update({expires_at:reauthExpiry.toISOString()}).eq('token_hash',hashedToken);
   if(expiry.error)throw new AuthError('กำหนดอายุ session ไม่สำเร็จ',503);
   await db.from('office_login_attempts').delete().eq('key',attemptKey);
