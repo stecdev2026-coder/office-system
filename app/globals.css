@@ -135,16 +135,16 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 button, [role="button"], input[type="button"], input[type="submit"], input[type="reset"], summary {cursor:pointer!important;}
 
 /* Shared data loader: the progress border follows the rounded-square login logo. */
-[data-logo-loader-ring]{--logo-size:64px;--loader-progress:0deg;position:relative;display:grid;width:var(--logo-size);height:var(--logo-size);place-items:center;isolation:isolate;}
+[data-logo-loader-ring]{--logo-size:64px;position:relative;display:grid;width:var(--logo-size);height:var(--logo-size);place-items:center;isolation:isolate;}
 [data-logo-loader-ring][data-size="sm"]{--logo-size:42px;}
 [data-logo-loader-ring][data-size="lg"]{--logo-size:84px;}
 [data-logo-loader-ring] img{z-index:2;width:100%;height:100%;border-radius:24%;object-fit:cover;box-shadow:0 8px 24px #1d4ed829;}
 [data-logo-loader-track],[data-logo-loader-spinner]{position:absolute;inset:-3px;border-radius:calc(24% + 3px);pointer-events:none;}
 [data-logo-loader-track]{border:3px solid #dfe5ee;}
-[data-logo-loader-spinner]{padding:3px;background:conic-gradient(from -90deg,#2563eb 0deg,#0ea5e9,#22c55e var(--loader-progress),transparent var(--loader-progress));filter:drop-shadow(0 0 4px #2563eb70);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);mask-composite:exclude;}
+[data-logo-loader-spinner]{padding:3px;background:conic-gradient(from 0deg,#2563eb,#0ea5e9,#22c55e,#2563eb 72%,transparent 82%);filter:drop-shadow(0 0 4px #2563eb70);animation:logo-loader-spin .9s linear infinite;-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);mask-composite:exclude;}
 [data-logo-loader-label]{min-width:4ch;font-variant-numeric:tabular-nums;}
-[data-logo-loader-label] strong{color:inherit;font-weight:500;}
-@media(prefers-reduced-motion:reduce){[data-logo-loader-spinner]{filter:none}}
+@keyframes logo-loader-spin{to{transform:rotate(1turn)}}
+@media(prefers-reduced-motion:reduce){[data-logo-loader-spinner]{animation:none;filter:none}}
 
 /* Quiet, shared employee home and attendance UI. */
 .staff-header {flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:20px 24px;background:#fff;border-bottom:1px solid #edf1f2;z-index:20;}
