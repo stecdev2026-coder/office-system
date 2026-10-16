@@ -8,6 +8,7 @@ import LoadingScreen from '@/components/LoadingScreen';
 import {createClient} from '@/utils/supabase/client';
 import {enableMobileNotifications} from '@/lib/push/client';
 import {toast} from 'sonner';
+import PinSetupPrompt from '@/components/PinSetupPrompt';
 export default function HomePage(){
  const router=useRouter();
  const [employee,E]=useState<any>(null),[profile,P]=useState<any>(null),[attendance,A]=useState<any>(null),[unread,N]=useState(0),[trip,T]=useState<any>(null),[loading,L]=useState(true),[error,X]=useState('');
@@ -26,6 +27,7 @@ export default function HomePage(){
   <button type="button" onClick={openNotifications} className="staff-icon-button relative" aria-label={`การแจ้งเตือน ${unread} รายการ`}><Bell size={21}/>{unread>0&&<span className="absolute right-0 top-0 rounded-full bg-teal-700 px-1.5 text-xs text-white">{unread>99?'99+':unread}</span>}</button>
  </header><main className="staff-content space-y-5">
   {error&&<p role="alert" className="text-rose-700">{error}</p>}
+  <PinSetupPrompt/>
   <section className="staff-card attendance-hero"><div className="flex justify-between items-center gap-3"><span className="staff-eyebrow"><Clock size={17}/>การลงเวลาวันนี้</span><span className="staff-status">{finished?'เสร็จสิ้น':started?'กำลังทำงาน':'ยังไม่เข้างาน'}</span></div><p className="text-sm text-slate-500 mt-3">{new Date().toLocaleDateString('th-TH',{timeZone:'Asia/Bangkok',dateStyle:'full'})}</p>
    <div className="grid grid-cols-2 gap-3 my-6"><div className="rounded-2xl border border-emerald-200 bg-emerald-100 p-4"><p className="text-sm font-medium text-emerald-800">เวลาเข้างาน</p><b className={`mt-1 block text-3xl font-semibold tracking-tight ${record?.check_in_time?'text-emerald-950':'text-emerald-700/35'}`}>{time(record?.check_in_time)}</b></div><div className="rounded-2xl border border-red-200 bg-red-100 p-4"><p className="text-sm font-medium text-red-800">เวลาออกงาน</p><b className={`mt-1 block text-3xl font-semibold tracking-tight ${record?.check_out_time?'text-red-950':'text-red-700/35'}`}>{time(record?.check_out_time)}</b></div></div>
    <Link href="/check-in" className="staff-primary">{finished?'ดูประวัติลงเวลาวันนี้':started?'เช็คอินระหว่างวัน / ออกงาน':'ลงเวลาเข้างาน'}<ArrowUpRight size={20}/></Link>

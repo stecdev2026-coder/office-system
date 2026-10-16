@@ -53,16 +53,18 @@ export async function issueSession(request: NextRequest, employee: Record<string
   if (!/^[a-zA-Z0-9_-]{32,128}$/.test(deviceToken)) throw new AuthError('รหัสเครื่องไม่ถูกต้อง');
   if (employee.is_active !== true) throw new AuthError('บัญชีนี้ยังไม่ได้รับการอนุมัติ', 403);
   const token = newToken();
-  const { error } = await database().rpc('office_issue_session', { p_employee_id: String(employee.id), p_device_hash: tokenHash(deviceToken), p_token_hash: tokenHash(token), p_method: method });
+  const db=database(),hashedToken=tokenHash(token);
+  const { error } = await db.rpc('office_issue_session', { p_employee_id: String(employee.id), p_device_hash: tokenHash(deviceToken), p_token_hash: hashedToken, p_method: method });
   if (error) {
     if (error.message.includes('DEVICE_MISMATCH')) throw new AuthError('บัญชีนี้ผูกกับเครื่องอื่นแล้ว กรุณาให้แอดมินรีเซ็ตเครื่อง', 403);
     if (error.message.includes('LINE_DISABLED')) throw new AuthError('ปิดการลงชื่อผ่าน LINE แล้ว', 403);
     throw new AuthError('บันทึก session ไม่สำเร็จ', 503);
   }
-  const access = await permissionsFor(String(employee.id));
-  const response = NextResponse.json({ ...access, employee: {...publicEmployee(employee),is_super_admin:access.isSuperAdmin}, profile: { userId: employee.line_user_id || `employee_${employee.id}`, displayName: `${employee.first_name || ''} ${employee.last_name || ''}`.trim(), pictureUrl: employee.profile_photo_url || '' } });
+  const access = await permissionsFor(String(employee.id)),sessionDays=access.isSuperAdmin||employee.role==='Admin'?30:90,expiresAt=new Date(Date.now()+sessionDays*86400000).toISOString();
+  const expiry=await db.from('office_sessions').update({expires_at:expiresAt}).eq('token_hash',hashedToken);if(expiry.error)throw new AuthError('กำหนดอายุ session ไม่สำเร็จ',503);
+  const response = NextResponse.json({ ...access, sessionDays, employee: {...publicEmployee(employee),is_super_admin:access.isSuperAdmin}, profile: { userId: employee.line_user_id || `employee_${employee.id}`, displayName: `${employee.first_name || ''} ${employee.last_name || ''}`.trim(), pictureUrl: employee.profile_photo_url || '' } });
   response.headers.set('Cache-Control', 'no-store');
-  response.cookies.set('office_session', token, { httpOnly: true, sameSite: 'lax', secure: new URL(process.env.APP_URL || request.url).protocol === 'https:', path: '/', maxAge: 60 * 60 * 24 * 30 });
+  response.cookies.set('office_session', token, { httpOnly: true, sameSite: 'lax', secure: new URL(process.env.APP_URL || request.url).protocol === 'https:', path: '/', maxAge: 60 * 60 * 24 * sessionDays });
   return response;
 }
 export function failure(error: unknown) {

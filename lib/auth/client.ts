@@ -10,10 +10,12 @@ export function saveLogin(data: { employee: { id: unknown }; profile: unknown },
   localStorage.setItem('device_token', deviceToken);
   localStorage.setItem('employee_data', JSON.stringify(data.employee));
   localStorage.setItem('line_profile', JSON.stringify(data.profile));
+  sessionStorage.setItem('office_pin_unlocked','1');
 }
 export async function logout(destination = "/login") {
   const response = await fetch('/api/auth/logout', { method: 'POST' });
   if (!response.ok) throw new Error('ออกจากระบบไม่สำเร็จ');
   localStorage.removeItem('employee_data'); localStorage.removeItem('line_profile');
+  sessionStorage.removeItem('office_pin_unlocked');
   window.location.replace(destination);
 }

@@ -86,7 +86,15 @@ create table if not exists public.office_sessions (
   employee_id text not null,
   device_hash text not null,
   auth_method text not null check (auth_method in ('password','line','email')),
-  expires_at timestamptz not null default now() + interval '30 days'
+  expires_at timestamptz not null default now() + interval '30 days',
+  created_at timestamptz not null default now()
+);
+create table if not exists public.office_pin_credentials (
+  employee_id text primary key,
+  device_hash text not null,
+  pin_hash text not null,
+  enabled boolean not null default true,
+  updated_at timestamptz not null default now()
 );
 create index if not exists office_sessions_employee on public.office_sessions(employee_id);
 create table if not exists public.office_login_attempts (
@@ -99,6 +107,7 @@ alter table public.office_auth_settings enable row level security;
 alter table public.office_credentials enable row level security;
 alter table public.office_devices enable row level security;
 alter table public.office_sessions enable row level security;
+alter table public.office_pin_credentials enable row level security;
 alter table public.office_login_attempts enable row level security;
 alter table public.office_auth_admins enable row level security;
 alter table public.office_auth_identities enable row level security;
@@ -108,6 +117,17 @@ revoke all on public.office_auth_admins from anon, authenticated;
 grant all on public.office_auth_admins to service_role;
 revoke all on public.office_auth_settings, public.office_credentials, public.office_devices, public.office_sessions, public.office_login_attempts from anon, authenticated;
 grant all on public.office_auth_settings, public.office_credentials, public.office_devices, public.office_sessions, public.office_login_attempts to service_role;
+revoke all on public.office_pin_credentials from anon, authenticated;
+grant all on public.office_pin_credentials to service_role;
+create or replace function public.office_clear_pin_after_password_change()
+returns trigger language plpgsql security definer set search_path=public as $$
+begin
+  if old.password_hash is distinct from new.password_hash then delete from office_pin_credentials where employee_id=new.employee_id; end if;
+  return new;
+end $$;
+drop trigger if exists office_clear_pin_after_password_change on public.office_credentials;
+create trigger office_clear_pin_after_password_change after update of password_hash on public.office_credentials for each row execute function public.office_clear_pin_after_password_change();
+revoke all on function public.office_clear_pin_after_password_change() from public, anon, authenticated;
 
 create or replace function public.office_issue_session(p_employee_id text, p_device_hash text, p_token_hash text, p_method text)
 returns void language plpgsql set search_path = public as $$
@@ -153,6 +173,7 @@ returns void language plpgsql set search_path = public as $$
 begin
   perform pg_advisory_xact_lock(hashtextextended(p_employee_id,0));
   delete from office_sessions where employee_id=p_employee_id;
+  delete from office_pin_credentials where employee_id=p_employee_id;
   delete from office_devices where employee_id=p_employee_id;
 end $$;
 create or replace function public.office_set_line_login(p_enabled boolean)
