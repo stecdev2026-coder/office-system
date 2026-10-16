@@ -19,7 +19,7 @@ export default function BottomNav() {
     }
   }, [pathname]);
 
-  if (pathname === "/login" || pathname === "/admin-login" || pathname === "/register" || pathname === "/pending" || pathname.startsWith("/admin") || !isLoggedIn) {
+  if (pathname === "/login" || pathname === "/admin-login" || pathname === "/register" || pathname === "/pending" || pathname === "/mode" || pathname.startsWith("/admin") || !isLoggedIn) {
     return null;
   }
 
